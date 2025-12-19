@@ -1,0 +1,77 @@
+{
+  "name": "gitlab-blame",
+  "displayName": "GitLab Blame MR Link",
+  "description": "Show GitLab Merge Request links in git blame hovers",
+  "version": "0.1.0",
+  "publisher": "sleonce",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sleonce/gitlab-blame"
+  },
+  "engines": {
+    "vscode": "^1.84.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "extensionDependencies": [
+    "vscode.git"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "gitlabBlame.setToken",
+        "title": "GitLab Blame: Set Personal Access Token"
+      },
+      {
+        "command": "gitlabBlame.clearCache",
+        "title": "GitLab Blame: Clear Cache"
+      }
+    ],
+    "configuration": {
+      "title": "GitLab Blame",
+      "properties": {
+        "gitlabBlame.gitlabUrl": {
+          "type": "string",
+          "default": "https://gitlab.com",
+          "description": "GitLab instance URL (e.g., https://gitlab.pytheascapital.net)"
+        },
+        "gitlabBlame.cacheTTL": {
+          "type": "number",
+          "default": 3600,
+          "description": "Cache TTL in seconds (0 to disable)"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
+    "lint": "eslint src --ext ts",
+    "lint:fix": "eslint src --ext ts --fix",
+    "typecheck": "tsc --noEmit",
+    "test": "node ./out/test/runTest.js",
+    "pretest": "tsc -p ./tsconfig.test.json"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.10.0",
+    "@types/sinon": "^17.0.2",
+    "@types/vscode": "^1.84.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vscode/test-electron": "^2.3.8",
+    "@vscode/vsce": "^2.22.0",
+    "esbuild": "^0.19.8",
+    "eslint": "^8.55.0",
+    "mocha": "^10.2.0",
+    "sinon": "^17.0.1",
+    "typescript": "^5.3.2"
+  }
+}
