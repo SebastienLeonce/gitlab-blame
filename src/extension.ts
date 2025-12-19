@@ -1,7 +1,9 @@
 import * as vscode from "vscode";
 import { GitService } from "./services/GitService";
+import { GitLabService } from "./services/GitLabService";
 
 let gitService: GitService | undefined;
+let gitLabService: GitLabService | undefined;
 
 export async function activate(
   context: vscode.ExtensionContext,
@@ -19,6 +21,38 @@ export async function activate(
     );
   }
 
+  // Initialize GitLabService
+  gitLabService = new GitLabService();
+
+  // Load token from SecretStorage
+  const storedToken = await context.secrets.get("gitlabBlame.token");
+  if (storedToken) {
+    gitLabService.setToken(storedToken);
+  }
+
+  // Listen for secret changes (e.g., token updated externally)
+  context.subscriptions.push(
+    context.secrets.onDidChange((e) => {
+      if (e.key === "gitlabBlame.token") {
+        void context.secrets.get("gitlabBlame.token").then((token) => {
+          gitLabService?.setToken(token);
+          gitLabService?.resetTokenErrorFlag();
+        });
+      }
+    }),
+  );
+
+  // Listen for configuration changes
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (e.affectsConfiguration("gitlabBlame.gitlabUrl")) {
+        const config = vscode.workspace.getConfiguration("gitlabBlame");
+        const newUrl = config.get<string>("gitlabUrl", "https://gitlab.com");
+        gitLabService?.setGitLabUrl(newUrl);
+      }
+    }),
+  );
+
   // Register command: Set Personal Access Token
   const setTokenCommand = vscode.commands.registerCommand(
     "gitlabBlame.setToken",
@@ -32,6 +66,8 @@ export async function activate(
 
       if (token) {
         await context.secrets.store("gitlabBlame.token", token);
+        gitLabService?.setToken(token);
+        gitLabService?.resetTokenErrorFlag();
         void vscode.window.showInformationMessage(
           "GitLab token saved successfully",
         );
@@ -51,13 +87,13 @@ export async function activate(
   context.subscriptions.push(setTokenCommand, clearCacheCommand);
 
   // TODO: Initialize remaining services and register HoverProvider
-  // - GitLabService (Phase 3)
   // - CacheService (Phase 4)
   // - BlameHoverProvider (Phase 5)
 }
 
 export function deactivate(): void {
   gitService = undefined;
+  gitLabService = undefined;
 }
 
 /**
@@ -66,4 +102,12 @@ export function deactivate(): void {
  */
 export function getGitService(): GitService | undefined {
   return gitService;
+}
+
+/**
+ * Get the GitLabService instance
+ * @returns GitLabService if initialized, undefined otherwise
+ */
+export function getGitLabService(): GitLabService | undefined {
+  return gitLabService;
 }
