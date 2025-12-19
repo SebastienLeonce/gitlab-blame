@@ -105,7 +105,76 @@ export async function activate(
     },
   );
 
-  context.subscriptions.push(setTokenCommand, clearCacheCommand);
+  // Register command: Delete Token
+  const deleteTokenCommand = vscode.commands.registerCommand(
+    "gitlabBlame.deleteToken",
+    async () => {
+      const hasToken = gitLabService?.hasToken() ?? false;
+      if (!hasToken) {
+        void vscode.window.showInformationMessage(
+          "GitLab Blame: No token configured",
+        );
+        return;
+      }
+
+      const confirm = await vscode.window.showWarningMessage(
+        "Are you sure you want to delete your GitLab Personal Access Token?",
+        { modal: true },
+        "Delete",
+      );
+
+      if (confirm === "Delete") {
+        await context.secrets.delete("gitlabBlame.token");
+        gitLabService?.setToken(undefined);
+        void vscode.window.showInformationMessage(
+          "GitLab Blame: Token deleted successfully",
+        );
+      }
+    },
+  );
+
+  // Register command: Show Status
+  const showStatusCommand = vscode.commands.registerCommand(
+    "gitlabBlame.showStatus",
+    async () => {
+      const config = vscode.workspace.getConfiguration("gitlabBlame");
+      const gitlabUrl = config.get<string>("gitlabUrl", "https://gitlab.com");
+      const cacheTTL = config.get<number>("cacheTTL", 3600);
+      const hasToken = gitLabService?.hasToken() ?? false;
+      const cacheSize = cacheService?.size ?? 0;
+      const gitInitialized = gitService?.isInitialized() ?? false;
+
+      const statusItems = [
+        `GitLab URL: ${gitlabUrl}`,
+        `Token: ${hasToken ? "Configured ✓" : "Not configured ✗"}`,
+        `Cache TTL: ${cacheTTL} seconds`,
+        `Cache entries: ${cacheSize}`,
+        `Git extension: ${gitInitialized ? "Connected ✓" : "Not connected ✗"}`,
+      ];
+
+      const action = await vscode.window.showInformationMessage(
+        `GitLab Blame Status\n\n${statusItems.join("\n")}`,
+        "Set Token",
+        "Open Settings",
+      );
+
+      if (action === "Set Token") {
+        void vscode.commands.executeCommand("gitlabBlame.setToken");
+      } else if (action === "Open Settings") {
+        void vscode.commands.executeCommand(
+          "workbench.action.openSettings",
+          "gitlabBlame",
+        );
+      }
+    },
+  );
+
+  context.subscriptions.push(
+    setTokenCommand,
+    clearCacheCommand,
+    deleteTokenCommand,
+    showStatusCommand,
+  );
 }
 
 export function deactivate(): void {

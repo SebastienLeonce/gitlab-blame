@@ -29,8 +29,16 @@
         "title": "GitLab Blame: Set Personal Access Token"
       },
       {
+        "command": "gitlabBlame.deleteToken",
+        "title": "GitLab Blame: Delete Personal Access Token"
+      },
+      {
         "command": "gitlabBlame.clearCache",
         "title": "GitLab Blame: Clear Cache"
+      },
+      {
+        "command": "gitlabBlame.showStatus",
+        "title": "GitLab Blame: Show Status"
       }
     ],
     "configuration": {
