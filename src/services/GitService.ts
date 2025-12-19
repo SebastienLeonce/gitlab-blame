@@ -72,6 +72,14 @@ export class GitService {
   }
 
   /**
+   * Get the Git API instance
+   * @returns The VS Code Git API or undefined if not initialized
+   */
+  getAPI(): API | undefined {
+    return this.api;
+  }
+
+  /**
    * Get the repository for a given URI
    */
   getRepository(uri: vscode.Uri): Repository | null {

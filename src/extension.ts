@@ -1,9 +1,11 @@
 import * as vscode from "vscode";
 import { GitService } from "./services/GitService";
 import { GitLabService } from "./services/GitLabService";
+import { CacheService } from "./services/CacheService";
 
 let gitService: GitService | undefined;
 let gitLabService: GitLabService | undefined;
+let cacheService: CacheService | undefined;
 
 export async function activate(
   context: vscode.ExtensionContext,
@@ -29,6 +31,10 @@ export async function activate(
   if (storedToken) {
     gitLabService.setToken(storedToken);
   }
+
+  // Initialize CacheService with Git API for watching repo changes
+  cacheService = new CacheService();
+  cacheService.initialize(gitService.getAPI());
 
   // Listen for secret changes (e.g., token updated externally)
   context.subscriptions.push(
@@ -79,21 +85,25 @@ export async function activate(
   const clearCacheCommand = vscode.commands.registerCommand(
     "gitlabBlame.clearCache",
     () => {
-      // TODO: Implement cache clearing when CacheService is created
-      void vscode.window.showInformationMessage("GitLab Blame cache cleared");
+      const size = cacheService?.size ?? 0;
+      cacheService?.clear();
+      void vscode.window.showInformationMessage(
+        `GitLab Blame: Cache cleared (${size} entries removed)`,
+      );
     },
   );
 
   context.subscriptions.push(setTokenCommand, clearCacheCommand);
 
   // TODO: Initialize remaining services and register HoverProvider
-  // - CacheService (Phase 4)
   // - BlameHoverProvider (Phase 5)
 }
 
 export function deactivate(): void {
+  cacheService?.dispose();
   gitService = undefined;
   gitLabService = undefined;
+  cacheService = undefined;
 }
 
 /**
@@ -110,4 +120,12 @@ export function getGitService(): GitService | undefined {
  */
 export function getGitLabService(): GitLabService | undefined {
   return gitLabService;
+}
+
+/**
+ * Get the CacheService instance
+ * @returns CacheService if initialized, undefined otherwise
+ */
+export function getCacheService(): CacheService | undefined {
+  return cacheService;
 }
