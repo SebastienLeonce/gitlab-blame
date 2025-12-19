@@ -105,10 +105,10 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Make MR links clickable (open in browser)
 - [x] Handle graceful degradation (show commit info when MR unavailable)
 
-### Phase 6: Configuration
-- [ ] GitLab instance URL (support self-hosted)
-- [ ] Cache TTL settings
-- [ ] PAT management commands
+### Phase 6: Configuration ✅
+- [x] GitLab instance URL (support self-hosted)
+- [x] Cache TTL settings
+- [x] PAT management commands (set, delete, status)
 
 ### Phase 7: Testing
 - [ ] Set up test infrastructure (Mocha + @vscode/test-electron)
