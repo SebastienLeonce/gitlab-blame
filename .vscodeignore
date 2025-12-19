@@ -1,0 +1,30 @@
+# Source files (bundled into dist/)
+src/**
+
+# Test files
+test/**
+out/**
+
+# Development config
+.vscode/**
+.github/**
+.claude/**
+tsconfig.json
+tsconfig.test.json
+.eslintrc.json
+
+# Build artifacts
+node_modules/**
+.vscode-test/**
+*.vsix
+
+# Documentation (not needed in extension)
+ref/**
+CLAUDE.md
+
+# Git
+.git/**
+.gitignore
+
+# Misc
+**/*.map
