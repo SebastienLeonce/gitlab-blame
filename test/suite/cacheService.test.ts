@@ -1,91 +1,14 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
-
-// Mock vscode module
-const mockVscode = {
-  workspace: {
-    getConfiguration: sinon.stub().returns({
-      get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
-        if (key === "cacheTTL") {
-          return 3600;
-        }
-        return defaultValue;
-      }),
-    }),
-    onDidChangeConfiguration: sinon.stub().returns({ dispose: sinon.stub() }),
-  },
-  Disposable: class {
-    dispose() {}
-  },
-};
-
-// We need to test the cache logic without the full VS Code integration
-// Create a simplified cache for testing
-interface CacheEntry<T> {
-  value: T;
-  expiresAt: number;
-}
-
-interface MergeRequest {
-  iid: number;
-  title: string;
-  webUrl: string;
-  mergedAt: string | null;
-  state: string;
-}
-
-class TestCache {
-  private cache = new Map<string, CacheEntry<MergeRequest | null>>();
-  private ttlMs: number;
-
-  constructor(ttlSeconds: number) {
-    this.ttlMs = ttlSeconds * 1000;
-  }
-
-  get(sha: string): MergeRequest | null | undefined {
-    const entry = this.cache.get(sha);
-    if (!entry) {
-      return undefined;
-    }
-    if (Date.now() > entry.expiresAt) {
-      this.cache.delete(sha);
-      return undefined;
-    }
-    return entry.value;
-  }
-
-  set(sha: string, mr: MergeRequest | null): void {
-    if (this.ttlMs <= 0) {
-      return;
-    }
-    this.cache.set(sha, {
-      value: mr,
-      expiresAt: Date.now() + this.ttlMs,
-    });
-  }
-
-  has(sha: string): boolean {
-    return this.get(sha) !== undefined;
-  }
-
-  clear(): void {
-    this.cache.clear();
-  }
-
-  get size(): number {
-    return this.cache.size;
-  }
-
-  setTTL(seconds: number): void {
-    this.ttlMs = seconds * 1000;
-  }
-}
+import * as vscode from "vscode";
+import { CacheService } from "../../src/services/CacheService";
 
 suite("CacheService", () => {
-  let cache: TestCache;
+  let cacheService: CacheService;
   let clock: sinon.SinonFakeTimers;
+  let getConfigurationStub: sinon.SinonStub;
 
-  const sampleMR: MergeRequest = {
+  const sampleMR = {
     iid: 123,
     title: "Test MR",
     webUrl: "https://gitlab.com/group/project/-/merge_requests/123",
@@ -94,143 +17,190 @@ suite("CacheService", () => {
   };
 
   setup(() => {
-    cache = new TestCache(3600); // 1 hour TTL
+    // Stub vscode.workspace.getConfiguration before creating CacheService
+    getConfigurationStub = sinon.stub(vscode.workspace, "getConfiguration");
+    getConfigurationStub.returns({
+      get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
+        if (key === "cacheTTL") {
+          return 3600; // 1 hour TTL
+        }
+        return defaultValue;
+      }),
+    } as unknown as vscode.WorkspaceConfiguration);
+
     clock = sinon.useFakeTimers();
+    cacheService = new CacheService();
   });
 
   teardown(() => {
     clock.restore();
+    getConfigurationStub.restore();
+    cacheService.dispose();
   });
 
   suite("get/set", () => {
     test("returns undefined for cache miss", () => {
-      const result = cache.get("abc123");
+      const result = cacheService.get("abc123");
       assert.strictEqual(result, undefined);
     });
 
     test("returns cached value for cache hit", () => {
-      cache.set("abc123", sampleMR);
-      const result = cache.get("abc123");
+      cacheService.set("abc123", sampleMR);
+      const result = cacheService.get("abc123");
       assert.deepStrictEqual(result, sampleMR);
     });
 
     test("caches null value (no MR found)", () => {
-      cache.set("abc123", null);
-      const result = cache.get("abc123");
+      cacheService.set("abc123", null);
+      const result = cacheService.get("abc123");
       assert.strictEqual(result, null);
     });
 
     test("distinguishes between null and undefined", () => {
       // undefined = not in cache
-      assert.strictEqual(cache.get("notcached"), undefined);
+      assert.strictEqual(cacheService.get("notcached"), undefined);
 
       // null = cached as "no MR found"
-      cache.set("cached", null);
-      assert.strictEqual(cache.get("cached"), null);
+      cacheService.set("cached", null);
+      assert.strictEqual(cacheService.get("cached"), null);
     });
   });
 
   suite("TTL expiration", () => {
     test("returns value before TTL expires", () => {
-      cache.set("abc123", sampleMR);
+      cacheService.set("abc123", sampleMR);
 
       // Advance time by 30 minutes (less than 1 hour TTL)
       clock.tick(30 * 60 * 1000);
 
-      const result = cache.get("abc123");
+      const result = cacheService.get("abc123");
       assert.deepStrictEqual(result, sampleMR);
     });
 
     test("returns undefined after TTL expires", () => {
-      cache.set("abc123", sampleMR);
+      cacheService.set("abc123", sampleMR);
 
       // Advance time by 2 hours (more than 1 hour TTL)
       clock.tick(2 * 60 * 60 * 1000);
 
-      const result = cache.get("abc123");
+      const result = cacheService.get("abc123");
       assert.strictEqual(result, undefined);
     });
 
     test("removes expired entry from cache on access", () => {
-      cache.set("abc123", sampleMR);
-      assert.strictEqual(cache.size, 1);
+      cacheService.set("abc123", sampleMR);
+      assert.strictEqual(cacheService.size, 1);
 
       // Advance time past TTL
       clock.tick(2 * 60 * 60 * 1000);
 
       // Access triggers removal
-      cache.get("abc123");
-      assert.strictEqual(cache.size, 0);
+      cacheService.get("abc123");
+      assert.strictEqual(cacheService.size, 0);
     });
   });
 
   suite("has", () => {
     test("returns false for cache miss", () => {
-      assert.strictEqual(cache.has("abc123"), false);
+      assert.strictEqual(cacheService.has("abc123"), false);
     });
 
     test("returns true for cache hit", () => {
-      cache.set("abc123", sampleMR);
-      assert.strictEqual(cache.has("abc123"), true);
+      cacheService.set("abc123", sampleMR);
+      assert.strictEqual(cacheService.has("abc123"), true);
     });
 
     test("returns true for cached null", () => {
-      cache.set("abc123", null);
-      assert.strictEqual(cache.has("abc123"), true);
+      cacheService.set("abc123", null);
+      assert.strictEqual(cacheService.has("abc123"), true);
     });
 
     test("returns false after TTL expires", () => {
-      cache.set("abc123", sampleMR);
+      cacheService.set("abc123", sampleMR);
       clock.tick(2 * 60 * 60 * 1000);
-      assert.strictEqual(cache.has("abc123"), false);
+      assert.strictEqual(cacheService.has("abc123"), false);
     });
   });
 
   suite("clear", () => {
     test("removes all entries", () => {
-      cache.set("abc123", sampleMR);
-      cache.set("def456", sampleMR);
-      cache.set("ghi789", null);
+      cacheService.set("abc123", sampleMR);
+      cacheService.set("def456", sampleMR);
+      cacheService.set("ghi789", null);
 
-      assert.strictEqual(cache.size, 3);
+      assert.strictEqual(cacheService.size, 3);
 
-      cache.clear();
+      cacheService.clear();
 
-      assert.strictEqual(cache.size, 0);
-      assert.strictEqual(cache.get("abc123"), undefined);
-      assert.strictEqual(cache.get("def456"), undefined);
-      assert.strictEqual(cache.get("ghi789"), undefined);
+      assert.strictEqual(cacheService.size, 0);
+      assert.strictEqual(cacheService.get("abc123"), undefined);
+      assert.strictEqual(cacheService.get("def456"), undefined);
+      assert.strictEqual(cacheService.get("ghi789"), undefined);
     });
   });
 
   suite("TTL disabled", () => {
     test("does not cache when TTL is 0", () => {
-      cache.setTTL(0);
-      cache.set("abc123", sampleMR);
-      assert.strictEqual(cache.size, 0);
+      // Create a new cache service with TTL = 0
+      getConfigurationStub.returns({
+        get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
+          if (key === "cacheTTL") {
+            return 0;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      const disabledCache = new CacheService();
+      disabledCache.set("abc123", sampleMR);
+      assert.strictEqual(disabledCache.size, 0);
+      disabledCache.dispose();
     });
 
     test("does not cache when TTL is negative", () => {
-      cache.setTTL(-1);
-      cache.set("abc123", sampleMR);
-      assert.strictEqual(cache.size, 0);
+      // Create a new cache service with negative TTL
+      getConfigurationStub.returns({
+        get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
+          if (key === "cacheTTL") {
+            return -1;
+          }
+          return defaultValue;
+        }),
+      } as unknown as vscode.WorkspaceConfiguration);
+
+      const disabledCache = new CacheService();
+      disabledCache.set("abc123", sampleMR);
+      assert.strictEqual(disabledCache.size, 0);
+      disabledCache.dispose();
     });
   });
 
   suite("size", () => {
     test("returns 0 for empty cache", () => {
-      assert.strictEqual(cache.size, 0);
+      assert.strictEqual(cacheService.size, 0);
     });
 
     test("returns correct count", () => {
-      cache.set("abc123", sampleMR);
-      assert.strictEqual(cache.size, 1);
+      cacheService.set("abc123", sampleMR);
+      assert.strictEqual(cacheService.size, 1);
 
-      cache.set("def456", sampleMR);
-      assert.strictEqual(cache.size, 2);
+      cacheService.set("def456", sampleMR);
+      assert.strictEqual(cacheService.size, 2);
 
-      cache.set("ghi789", null);
-      assert.strictEqual(cache.size, 3);
+      cacheService.set("ghi789", null);
+      assert.strictEqual(cacheService.size, 3);
+    });
+  });
+
+  suite("dispose", () => {
+    test("clears cache on dispose", () => {
+      cacheService.set("abc123", sampleMR);
+      cacheService.set("def456", sampleMR);
+      assert.strictEqual(cacheService.size, 2);
+
+      cacheService.dispose();
+
+      assert.strictEqual(cacheService.size, 0);
     });
   });
 });
