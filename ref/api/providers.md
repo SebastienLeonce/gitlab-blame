@@ -6,6 +6,12 @@
 
 Implements VS Code's `HoverProvider` interface to display git blame information with GitLab MR links.
 
+### Constants
+
+#### `MR_TITLE_MAX_LENGTH = 50`
+
+Maximum length for MR link text in hover. Titles exceeding this are truncated with "..." and show full title on hover via Markdown link title attribute.
+
 ### Constructor
 
 ```typescript
@@ -42,6 +48,13 @@ Constructs the hover tooltip content.
 `abc1234` by Author Name • 2 days ago
 
 *Commit message summary*
+```
+
+Long MR titles are truncated (hover to see full title):
+```
+**Merge Request**: [!456 Implement very long feature na...](https://... "Full title here")
+
+`abc1234` by Author Name • 2 days ago
 ```
 
 If no MR found:
@@ -92,6 +105,33 @@ Formats dates as relative time.
 Escapes special markdown characters to prevent formatting issues.
 
 **Escaped characters**: `\` `` ` `` `*` `_` `{` `}` `[` `]` `(` `)` `#` `+` `-` `.` `!`
+
+#### `escapeMarkdownTitle(text: string): string`
+
+Escapes characters for Markdown link title attribute (used in tooltips).
+
+**Escaped characters**: `"` `\`
+
+#### `formatMrLink(mr: MergeRequest): string`
+
+Formats an MR as a clickable Markdown link with truncation for long titles.
+
+**Behavior**:
+- If `!{iid} {title}` ≤ 50 characters: Shows full text as link
+- If longer: Truncates title with "..." and adds full title as hover tooltip
+
+**Examples**:
+```typescript
+// Short title (no truncation)
+formatMrLink({ iid: 123, title: "Fix bug", webUrl: "..." });
+// => "[!123 Fix bug](https://...)"
+
+// Long title (truncated with tooltip)
+formatMrLink({ iid: 456, title: "Implement very long feature name that exceeds limit", webUrl: "..." });
+// => "[!456 Implement very long feature na...](https://... "Implement very long feature name that exceeds limit")"
+```
+
+The tooltip shows the full title when hovering over truncated links.
 
 ### Usage Example
 

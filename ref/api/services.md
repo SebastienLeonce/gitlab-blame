@@ -8,6 +8,8 @@ Wraps VS Code's built-in Git extension API for blame operations.
 
 ### Methods
 
+> **Note**: Uses VS Code's Git API which returns standard blame format (not porcelain).
+
 #### `initialize(): Promise<boolean>`
 
 Initialize the Git service by activating VS Code's Git extension.
@@ -84,6 +86,31 @@ Get the origin remote URL for a repository.
 **Location**: `src/services/GitLabService.ts`
 
 Client for GitLab REST API operations.
+
+### Error Types
+
+#### `GitLabErrorType` (enum)
+
+```typescript
+enum GitLabErrorType {
+  NoToken = "NO_TOKEN",
+  InvalidToken = "INVALID_TOKEN",
+  RateLimited = "RATE_LIMITED",
+  NetworkError = "NETWORK_ERROR",
+  NotFound = "NOT_FOUND",
+  Unknown = "UNKNOWN",
+}
+```
+
+#### `GitLabError` (interface)
+
+```typescript
+interface GitLabError {
+  type: GitLabErrorType;
+  message: string;
+  statusCode?: number;
+}
+```
 
 ### Constructor
 

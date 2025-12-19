@@ -103,3 +103,20 @@ Run in VS Code:
 - Token scope needed: `read_api`
 - Supports nested GitLab groups
 - Works with self-hosted GitLab instances
+
+## Development Guidelines
+
+### Documentation Sync Requirement
+
+**Before committing any code changes**, ensure that:
+
+1. **`ref/` folder** is updated to reflect any API, architecture, or pattern changes
+2. **`CLAUDE.md`** is updated if project structure, commands, settings, or key patterns change
+
+This keeps documentation in sync with the codebase and ensures accurate context for future development.
+
+**Checklist before commit**:
+- [ ] New/modified public methods documented in `ref/api/`
+- [ ] Architecture changes reflected in `ref/architecture.md`
+- [ ] New patterns added to `ref/patterns.md`
+- [ ] Configuration changes updated in `ref/configuration.md` and `CLAUDE.md`

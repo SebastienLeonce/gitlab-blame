@@ -268,32 +268,54 @@ md.isTrusted = true;
 md.appendMarkdown(`**Title**: ${escapeMarkdown(userInput)}`);
 ```
 
-### Git Blame Porcelain Parsing
+### Git Blame Standard Format Parsing
 
+VS Code's Git API returns standard blame format (not porcelain):
+
+```
+<sha> (<author> <date> <time> <timezone> <line>) <content>
+```
+
+**Example output**:
+```
+d01a7c049 (lsidoree         2025-07-09 17:57:39 +0200   1) import {
+^abc1234  (Another Author   2024-01-15 10:30:00 +0000  42) const x = 1;
+```
+
+**Parsing implementation**:
 ```typescript
-// Parse git blame --porcelain output
+// Parse standard git blame output
 const lines = output.split("\n");
-let currentSha: string | undefined;
+
+// Regex matches: ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
+const blameRegex =
+  /^\^?([a-f0-9]+)\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{4})\s+(\d+)\)\s?(.*)$/;
 
 for (const line of lines) {
-  // SHA line: <sha> <orig-line> <final-line> [<num-lines>]
-  const shaMatch = line.match(/^([a-f0-9]{40}) \d+ (\d+)/);
-  if (shaMatch) {
-    currentSha = shaMatch[1];
-    continue;
-  }
+  const match = line.match(blameRegex);
+  if (!match) continue;
 
-  // Key-value lines
-  if (line.startsWith("author ")) {
-    const author = line.substring(7);
-  }
+  const [, sha, author, date, time, timezone, lineNumStr] = match;
+  const lineNum = parseInt(lineNumStr, 10);
 
-  // Content line (ends the block)
-  if (line.startsWith("\t")) {
-    // Process complete entry
-  }
+  // Skip uncommitted changes (all zeros SHA)
+  if (/^0+$/.test(sha)) continue;
+
+  // Parse date and time
+  const dateTime = new Date(`${date}T${time}`);
+
+  result.set(lineNum, {
+    sha,
+    author: author.trim(),
+    authorEmail: "", // Standard format doesn't include email
+    date: dateTime,
+    summary: "",     // Standard format doesn't include commit message
+    line: lineNum,
+  });
 }
 ```
+
+**Note**: The `^` prefix on SHA indicates boundary commits. Standard format doesn't include author email or commit message—only porcelain format does.
 
 ---
 
