@@ -8,6 +8,7 @@ import { MergeRequest, BlameInfo } from "../types";
  * Provides hover information for git blame with GitLab MR links
  */
 export class BlameHoverProvider implements vscode.HoverProvider {
+  private static readonly MR_TITLE_MAX_LENGTH = 50;
   private pendingRequests = new Map<string, Promise<MergeRequest | null>>();
 
   constructor(
@@ -68,7 +69,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
 
     // Add MR info if available
     if (mrResult.mr) {
-      const mrLink = `[!${mrResult.mr.iid} ${this.escapeMarkdown(mrResult.mr.title)}](${mrResult.mr.webUrl})`;
+      const mrLink = this.formatMrLink(mrResult.mr);
       md.appendMarkdown(`**Merge Request**: ${mrLink}\n\n`);
     } else if (mrResult.loading) {
       md.appendMarkdown(`*Loading merge request...*\n\n`);
@@ -215,5 +216,35 @@ export class BlameHoverProvider implements vscode.HoverProvider {
    */
   private escapeMarkdown(text: string): string {
     return text.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&");
+  }
+
+  /**
+   * Escape characters for Markdown link title attribute
+   */
+  private escapeMarkdownTitle(text: string): string {
+    return text.replace(/["\\]/g, "\\$&");
+  }
+
+  /**
+   * Format MR link with truncation and tooltip for long titles
+   */
+  private formatMrLink(mr: MergeRequest): string {
+    const prefix = `!${mr.iid} `;
+    const fullText = prefix + mr.title;
+
+    if (fullText.length <= BlameHoverProvider.MR_TITLE_MAX_LENGTH) {
+      return `[${this.escapeMarkdown(fullText)}](${mr.webUrl})`;
+    }
+
+    // Truncate title only, preserving full MR number
+    const availableForTitle =
+      BlameHoverProvider.MR_TITLE_MAX_LENGTH - prefix.length - 3; // 3 for "..."
+    const truncatedTitle =
+      mr.title.substring(0, Math.max(0, availableForTitle)) + "...";
+    const truncatedText = prefix + truncatedTitle;
+
+    // Use Markdown link title syntax for full title tooltip
+    const escapedTitle = this.escapeMarkdownTitle(mr.title);
+    return `[${this.escapeMarkdown(truncatedText)}](${mr.webUrl} "${escapedTitle}")`;
   }
 }
