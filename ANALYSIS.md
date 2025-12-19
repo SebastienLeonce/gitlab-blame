@@ -110,11 +110,11 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Cache TTL settings
 - [x] PAT management commands (set, delete, status)
 
-### Phase 7: Testing
-- [ ] Set up test infrastructure (Mocha + @vscode/test-electron)
-- [ ] Write unit tests for core logic
-- [ ] Write integration tests with mocked API
-- [ ] Add CI pipeline for automated testing
+### Phase 7: Testing ✅
+- [x] Set up test infrastructure (Mocha + @vscode/test-electron)
+- [x] Write unit tests for core logic (remoteParser, CacheService)
+- [x] Write integration tests with mocked API (GitLabService MR selection)
+- [x] Add CI pipeline for automated testing (GitHub Actions)
 
 ## File Structure
 
