@@ -99,11 +99,11 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Implement cache invalidation on git operations (pull, fetch)
 - [x] Consider workspace state persistence for cross-session cache
 
-### Phase 5: UI/UX
-- [ ] Implement HoverProvider for blame + MR info
-- [ ] Add loading indicator for pending API requests
-- [ ] Make MR links clickable (open in browser)
-- [ ] Handle graceful degradation (show commit info when MR unavailable)
+### Phase 5: UI/UX ✅
+- [x] Implement HoverProvider for blame + MR info
+- [x] Add loading indicator for pending API requests
+- [x] Make MR links clickable (open in browser)
+- [x] Handle graceful degradation (show commit info when MR unavailable)
 
 ### Phase 6: Configuration
 - [ ] GitLab instance URL (support self-hosted)
