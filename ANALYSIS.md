@@ -79,12 +79,12 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Configure activation events
 - [x] Create `.gitignore` for node_modules, dist, etc.
 
-### Phase 2: Git Integration (via VS Code Git API)
-- [ ] Get `vscode.git` extension API
-- [ ] Implement blame retrieval using git extension
-- [ ] Map line numbers to commit SHAs
-- [ ] Handle case where git extension is disabled
-- [ ] Handle uncommitted changes gracefully
+### Phase 2: Git Integration (via VS Code Git API) ✅
+- [x] Get `vscode.git` extension API
+- [x] Implement blame retrieval using git extension
+- [x] Map line numbers to commit SHAs
+- [x] Handle case where git extension is disabled
+- [x] Handle uncommitted changes gracefully
 
 ### Phase 3: GitLab API Integration
 - [ ] Implement GitLab API client
