@@ -6,6 +6,9 @@ dist/
 out/
 *.vsix
 
+# VS Code test downloads
+.vscode-test/
+
 # IDE
 .vscode/*
 !.vscode/extensions.json
