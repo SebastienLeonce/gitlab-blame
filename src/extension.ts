@@ -11,8 +11,6 @@ let cacheService: CacheService | undefined;
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  console.log("GitLab Blame MR Link extension is now active");
-
   // Initialize GitService
   gitService = new GitService();
   const gitInitialized = await gitService.initialize();

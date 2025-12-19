@@ -152,85 +152,51 @@ export class GitService {
   }
 
   /**
-   * Parse git blame --porcelain output into a map of line numbers to BlameInfo
+   * Parse git blame output into a map of line numbers to BlameInfo
    *
-   * Porcelain format:
-   * <sha> <orig-line> <final-line> [<num-lines>]
-   * author <name>
-   * author-mail <email>
-   * author-time <timestamp>
-   * author-tz <timezone>
-   * committer <name>
-   * committer-mail <email>
-   * committer-time <timestamp>
-   * committer-tz <timezone>
-   * summary <message>
-   * [previous <sha> <filename>]
-   * filename <filename>
-   * \t<line-content>
+   * VS Code Git API returns standard blame format:
+   * <sha> (<author> <date> <time> <timezone> <line-number>) <content>
+   *
+   * Example:
+   * d01a7c049 (lsidoree         2025-07-09 17:57:39 +0200   1) import {
+   * ^abc1234  (Another Author   2024-01-15 10:30:00 +0000  42) const x = 1;
+   *
+   * Note: SHA may be prefixed with ^ for boundary commits
    */
   private parseBlameOutput(output: string): Map<number, BlameInfo> {
     const result = new Map<number, BlameInfo>();
     const lines = output.split("\n");
 
-    let currentSha: string | undefined;
-    let currentAuthor: string | undefined;
-    let currentAuthorEmail: string | undefined;
-    let currentDate: Date | undefined;
-    let currentSummary: string | undefined;
-    let currentLine: number | undefined;
+    // Standard blame format regex:
+    // ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
+    // The author field is right-padded with spaces to align the date
+    const blameRegex =
+      /^\^?([a-f0-9]+)\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{4})\s+(\d+)\)\s?(.*)$/;
 
     for (const line of lines) {
-      // SHA line: <sha> <orig-line> <final-line> [<num-lines>]
-      const shaMatch = line.match(/^([a-f0-9]{40}) \d+ (\d+)/);
-      if (shaMatch) {
-        currentSha = shaMatch[1];
-        currentLine = parseInt(shaMatch[2], 10);
+      const match = line.match(blameRegex);
+      if (!match) {
         continue;
       }
 
-      // Author name
-      if (line.startsWith("author ")) {
-        currentAuthor = line.substring(7);
-        continue;
-      }
+      const [, sha, author, date, time, _timezone, lineNumStr] = match;
+      const lineNum = parseInt(lineNumStr, 10);
 
-      // Author email
-      if (line.startsWith("author-mail ")) {
-        currentAuthorEmail = line.substring(12).replace(/[<>]/g, "");
-        continue;
-      }
+      // Check for uncommitted changes (all zeros SHA or very short SHA)
+      const isUncommitted = /^0+$/.test(sha);
 
-      // Author time (Unix timestamp)
-      if (line.startsWith("author-time ")) {
-        const timestamp = parseInt(line.substring(12), 10);
-        currentDate = new Date(timestamp * 1000);
-        continue;
-      }
+      if (!isUncommitted && sha && author && lineNum) {
+        // Parse the date and time
+        const dateTime = new Date(`${date}T${time}`);
 
-      // Commit summary
-      if (line.startsWith("summary ")) {
-        currentSummary = line.substring(8);
-        continue;
-      }
-
-      // Line content (starts with tab) - end of block for this line
-      if (line.startsWith("\t") && currentSha && currentLine !== undefined) {
-        // Check for uncommitted changes (all zeros SHA)
-        const isUncommitted = currentSha === "0".repeat(40);
-
-        if (!isUncommitted) {
-          result.set(currentLine, {
-            sha: currentSha,
-            author: currentAuthor ?? "Unknown",
-            authorEmail: currentAuthorEmail ?? "",
-            date: currentDate ?? new Date(),
-            summary: currentSummary ?? "",
-            line: currentLine,
-          });
-        }
-
-        // Reset for next block (but keep SHA info for consecutive lines from same commit)
+        result.set(lineNum, {
+          sha: sha,
+          author: author.trim(),
+          authorEmail: "", // Standard format doesn't include email
+          date: dateTime,
+          summary: "", // Standard format doesn't include commit message
+          line: lineNum,
+        });
       }
     }
 
