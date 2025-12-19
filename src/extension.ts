@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { GitService } from "./services/GitService";
 import { GitLabService } from "./services/GitLabService";
 import { CacheService } from "./services/CacheService";
+import { BlameHoverProvider } from "./providers/BlameHoverProvider";
 
 let gitService: GitService | undefined;
 let gitLabService: GitLabService | undefined;
@@ -21,6 +22,7 @@ export async function activate(
     void vscode.window.showErrorMessage(
       `GitLab Blame: Failed to initialize Git - ${error}`,
     );
+    // Don't return - allow extension to partially work
   }
 
   // Initialize GitLabService
@@ -35,6 +37,16 @@ export async function activate(
   // Initialize CacheService with Git API for watching repo changes
   cacheService = new CacheService();
   cacheService.initialize(gitService.getAPI());
+
+  // Register BlameHoverProvider for all file types
+  const hoverProvider = new BlameHoverProvider(
+    gitService,
+    gitLabService,
+    cacheService,
+  );
+  context.subscriptions.push(
+    vscode.languages.registerHoverProvider({ scheme: "file" }, hoverProvider),
+  );
 
   // Listen for secret changes (e.g., token updated externally)
   context.subscriptions.push(
@@ -94,9 +106,6 @@ export async function activate(
   );
 
   context.subscriptions.push(setTokenCommand, clearCacheCommand);
-
-  // TODO: Initialize remaining services and register HoverProvider
-  // - BlameHoverProvider (Phase 5)
 }
 
 export function deactivate(): void {
