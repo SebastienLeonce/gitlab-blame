@@ -70,14 +70,14 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 
 ## Implementation Plan
 
-### Phase 1: Project Setup
-- [ ] Initialize git repository (`git init`)
-- [ ] Initialize VS Code extension with `yo code`
-- [ ] Configure TypeScript, ESLint, bundler (esbuild)
-- [ ] Set up extension manifest (`package.json`)
-- [ ] Define minimum VS Code version: `^1.84.0`
-- [ ] Configure activation events
-- [ ] Create `.gitignore` for node_modules, dist, etc.
+### Phase 1: Project Setup ✅
+- [x] Initialize git repository (`git init`)
+- [x] Initialize VS Code extension with `yo code`
+- [x] Configure TypeScript, ESLint, bundler (esbuild)
+- [x] Set up extension manifest (`package.json`)
+- [x] Define minimum VS Code version: `^1.84.0`
+- [x] Configure activation events
+- [x] Create `.gitignore` for node_modules, dist, etc.
 
 ### Phase 2: Git Integration (via VS Code Git API)
 - [ ] Get `vscode.git` extension API
