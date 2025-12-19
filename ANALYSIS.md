@@ -93,11 +93,11 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Implement MR selection logic (first merged MR by `merged_at`)
 - [x] Handle authentication (PAT in VS Code SecretStorage)
 
-### Phase 4: Caching
-- [ ] Implement in-memory cache (commit SHA → MR data)
-- [ ] Add TTL-based expiration
-- [ ] Implement cache invalidation on git operations (pull, fetch)
-- [ ] Consider workspace state persistence for cross-session cache
+### Phase 4: Caching ✅
+- [x] Implement in-memory cache (commit SHA → MR data)
+- [x] Add TTL-based expiration
+- [x] Implement cache invalidation on git operations (pull, fetch)
+- [x] Consider workspace state persistence for cross-session cache
 
 ### Phase 5: UI/UX
 - [ ] Implement HoverProvider for blame + MR info
