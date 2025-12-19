@@ -86,12 +86,12 @@ GET /projects/:id/repository/commits/:sha/merge_requests
 - [x] Handle case where git extension is disabled
 - [x] Handle uncommitted changes gracefully
 
-### Phase 3: GitLab API Integration
-- [ ] Implement GitLab API client
-- [ ] Extract project path from git remote URL (handle nested groups)
-- [ ] Fetch MRs for commits via API
-- [ ] Implement MR selection logic (first merged MR by `merged_at`)
-- [ ] Handle authentication (PAT in VS Code SecretStorage)
+### Phase 3: GitLab API Integration ✅
+- [x] Implement GitLab API client
+- [x] Extract project path from git remote URL (handle nested groups)
+- [x] Fetch MRs for commits via API
+- [x] Implement MR selection logic (first merged MR by `merged_at`)
+- [x] Handle authentication (PAT in VS Code SecretStorage)
 
 ### Phase 4: Caching
 - [ ] Implement in-memory cache (commit SHA → MR data)
