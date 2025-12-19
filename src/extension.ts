@@ -1,7 +1,23 @@
 import * as vscode from "vscode";
+import { GitService } from "./services/GitService";
 
-export function activate(context: vscode.ExtensionContext): void {
+let gitService: GitService | undefined;
+
+export async function activate(
+  context: vscode.ExtensionContext,
+): Promise<void> {
   console.log("GitLab Blame MR Link extension is now active");
+
+  // Initialize GitService
+  gitService = new GitService();
+  const gitInitialized = await gitService.initialize();
+
+  if (!gitInitialized) {
+    const error = gitService.getInitializationError();
+    void vscode.window.showErrorMessage(
+      `GitLab Blame: Failed to initialize Git - ${error}`,
+    );
+  }
 
   // Register command: Set Personal Access Token
   const setTokenCommand = vscode.commands.registerCommand(
@@ -34,13 +50,20 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(setTokenCommand, clearCacheCommand);
 
-  // TODO: Initialize services and register HoverProvider
-  // - GitService
-  // - GitLabService
-  // - CacheService
-  // - BlameHoverProvider
+  // TODO: Initialize remaining services and register HoverProvider
+  // - GitLabService (Phase 3)
+  // - CacheService (Phase 4)
+  // - BlameHoverProvider (Phase 5)
 }
 
 export function deactivate(): void {
-  // Cleanup if needed
+  gitService = undefined;
+}
+
+/**
+ * Get the GitService instance
+ * @returns GitService if initialized, undefined otherwise
+ */
+export function getGitService(): GitService | undefined {
+  return gitService;
 }
