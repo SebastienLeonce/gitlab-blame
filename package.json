@@ -65,6 +65,7 @@
     "lint:fix": "eslint src --ext ts --fix",
     "typecheck": "tsc --noEmit",
     "test": "node ./out/test/runTest.js",
+    "test:coverage": "c8 npm test",
     "pretest": "tsc -p ./tsconfig.test.json"
   },
   "devDependencies": {
@@ -76,11 +77,34 @@
     "@typescript-eslint/parser": "^6.13.0",
     "@vscode/test-electron": "^2.3.8",
     "@vscode/vsce": "^2.22.0",
+    "c8": "^10.1.3",
     "esbuild": "^0.19.8",
     "eslint": "^8.55.0",
     "glob": "^10.3.10",
     "mocha": "^10.2.0",
     "sinon": "^17.0.1",
     "typescript": "^5.3.2"
+  },
+  "c8": {
+    "include": [
+      "out/src/**/*.js"
+    ],
+    "exclude": [
+      "out/test/**",
+      "out/src/types/**",
+      ".vscode-test/**",
+      "**/*.d.ts"
+    ],
+    "reporter": [
+      "text",
+      "text-summary",
+      "html",
+      "lcov"
+    ],
+    "all": true,
+    "check-coverage": false,
+    "report-dir": "./coverage",
+    "sourceMap": true,
+    "skipFull": false
   }
 }

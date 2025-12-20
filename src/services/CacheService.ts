@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
-import { MergeRequest } from "../types";
+import { MergeRequest, GitAPI, Repository } from "../interfaces/types";
+import { ICacheService } from "../interfaces/ICacheService";
+import { CONFIG_KEYS, DEFAULTS } from "../constants";
 
 interface CacheEntry {
   value: MergeRequest | null;
@@ -10,15 +12,18 @@ interface CacheEntry {
  * Service for caching commit SHA to MR mappings
  * Implements TTL-based expiration and manual invalidation
  */
-export class CacheService {
+export class CacheService implements ICacheService {
   private cache = new Map<string, CacheEntry>();
   private ttlMs: number;
   private disposables: vscode.Disposable[] = [];
 
   constructor() {
     // Get TTL from configuration (in seconds), convert to milliseconds
-    const config = vscode.workspace.getConfiguration("gitlabBlame");
-    const ttlSeconds = config.get<number>("cacheTTL", 3600);
+    const config = vscode.workspace.getConfiguration();
+    const ttlSeconds = config.get<number>(
+      CONFIG_KEYS.CACHE_TTL,
+      DEFAULTS.CACHE_TTL_SECONDS,
+    );
     this.ttlMs = ttlSeconds * 1000;
   }
 
@@ -46,9 +51,12 @@ export class CacheService {
     // Listen for configuration changes
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
-        if (e.affectsConfiguration("gitlabBlame.cacheTTL")) {
-          const config = vscode.workspace.getConfiguration("gitlabBlame");
-          const ttlSeconds = config.get<number>("cacheTTL", 3600);
+        if (e.affectsConfiguration(CONFIG_KEYS.CACHE_TTL)) {
+          const config = vscode.workspace.getConfiguration();
+          const ttlSeconds = config.get<number>(
+            CONFIG_KEYS.CACHE_TTL,
+            DEFAULTS.CACHE_TTL_SECONDS,
+          );
           this.ttlMs = ttlSeconds * 1000;
         }
       }),
@@ -139,18 +147,4 @@ export class CacheService {
     this.disposables = [];
     this.cache.clear();
   }
-}
-
-// Import types from git.d.ts (only the ones we need for cache invalidation)
-interface GitAPI {
-  readonly repositories: Repository[];
-  readonly onDidOpenRepository: vscode.Event<Repository>;
-}
-
-interface Repository {
-  readonly state: RepositoryState;
-}
-
-interface RepositoryState {
-  readonly onDidChange: vscode.Event<void>;
 }

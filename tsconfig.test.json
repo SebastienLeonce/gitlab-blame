@@ -4,7 +4,10 @@
     "rootDir": ".",
     "outDir": "out",
     "declaration": false,
-    "declarationMap": false
+    "declarationMap": false,
+    "sourceMap": true,
+    "inlineSourceMap": false,
+    "inlineSources": false
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "out"]

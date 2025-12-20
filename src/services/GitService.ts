@@ -179,7 +179,7 @@ export class GitService {
         continue;
       }
 
-      const [, sha, author, date, time, _timezone, lineNumStr] = match;
+      const [, sha, author, date, time, , lineNumStr] = match;
       const lineNum = parseInt(lineNumStr, 10);
 
       // Check for uncommitted changes (all zeros SHA or very short SHA)

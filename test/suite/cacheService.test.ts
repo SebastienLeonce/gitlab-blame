@@ -2,6 +2,7 @@ import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { CacheService } from "../../src/services/CacheService";
+import { CONFIG_KEYS } from "../../src/constants";
 
 suite("CacheService", () => {
   let cacheService: CacheService;
@@ -21,7 +22,7 @@ suite("CacheService", () => {
     getConfigurationStub = sinon.stub(vscode.workspace, "getConfiguration");
     getConfigurationStub.returns({
       get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
-        if (key === "cacheTTL") {
+        if (key === CONFIG_KEYS.CACHE_TTL) {
           return 3600; // 1 hour TTL
         }
         return defaultValue;
@@ -144,7 +145,7 @@ suite("CacheService", () => {
       // Create a new cache service with TTL = 0
       getConfigurationStub.returns({
         get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
-          if (key === "cacheTTL") {
+          if (key === CONFIG_KEYS.CACHE_TTL) {
             return 0;
           }
           return defaultValue;
@@ -161,7 +162,7 @@ suite("CacheService", () => {
       // Create a new cache service with negative TTL
       getConfigurationStub.returns({
         get: sinon.stub().callsFake((key: string, defaultValue: unknown) => {
-          if (key === "cacheTTL") {
+          if (key === CONFIG_KEYS.CACHE_TTL) {
             return -1;
           }
           return defaultValue;

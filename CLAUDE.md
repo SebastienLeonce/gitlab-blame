@@ -1,6 +1,6 @@
 # GitLab Blame MR Link - Project Context
 
-VS Code extension that adds GitLab Merge Request links to git blame hovers.
+VS Code extension that adds GitLab Merge Request links to git blame hovers. Supports multi-provider architecture for future GitHub/Bitbucket support.
 
 ## Quick Reference
 
@@ -12,23 +12,34 @@ VS Code extension that adds GitLab Merge Request links to git blame hovers.
 | Utilities API | `ref/api/utilities.md` |
 | Configuration | `ref/configuration.md` |
 | Code Patterns | `ref/patterns.md` |
+| Multi-Provider Guide | `ref/multi-provider.md` |
 
 ## Project Structure
 
 ```
 src/
-├── extension.ts           # Entry point, commands
+├── constants.ts                     # Config keys, commands, defaults
+├── extension.ts                     # Entry point, commands, error handling
+├── interfaces/
+│   ├── ICacheService.ts             # Cache service interface
+│   ├── IVcsProvider.ts              # VCS provider interface
+│   ├── index.ts                     # Barrel exports
+│   └── types.ts                     # Shared type definitions
 ├── providers/
-│   └── BlameHoverProvider.ts
+│   ├── BlameHoverProvider.ts        # Hover tooltip logic
+│   └── vcs/
+│       └── GitLabProvider.ts        # GitLab VCS provider
 ├── services/
-│   ├── CacheService.ts    # TTL cache
-│   ├── GitLabService.ts   # GitLab API client
-│   └── GitService.ts      # vscode.git wrapper
+│   ├── CacheService.ts              # TTL cache (implements ICacheService)
+│   ├── GitLabService.ts             # @deprecated - use GitLabProvider
+│   ├── GitService.ts                # vscode.git wrapper
+│   ├── TokenService.ts              # Multi-provider token management
+│   └── VcsProviderFactory.ts        # Provider registry and detection
 ├── types/
-│   ├── git.d.ts           # VS Code Git API types
-│   └── index.ts           # Internal types
+│   ├── git.d.ts                     # VS Code Git API types
+│   └── index.ts                     # Re-exports from interfaces
 └── utils/
-    └── remoteParser.ts    # Git URL parser
+    └── remoteParser.ts              # Git URL parser
 ```
 
 ## Commands
@@ -47,10 +58,13 @@ npm test           # Run tests
 
 | File | Purpose |
 |------|---------|
-| `src/extension.ts` | Extension entry, command registration |
-| `src/providers/BlameHoverProvider.ts` | Hover tooltip logic |
-| `src/services/GitLabService.ts` | GitLab API calls |
+| `src/extension.ts` | Extension entry, command registration, error UI handling |
+| `src/providers/BlameHoverProvider.ts` | Hover tooltip logic, provider-agnostic |
+| `src/providers/vcs/GitLabProvider.ts` | GitLab API implementation |
+| `src/services/VcsProviderFactory.ts` | Provider registry and auto-detection |
+| `src/services/TokenService.ts` | Multi-provider token management |
 | `src/services/CacheService.ts` | SHA → MR cache |
+| `src/interfaces/IVcsProvider.ts` | Provider interface contract |
 | `package.json` | Extension manifest, settings schema |
 
 ## Configuration Settings
@@ -84,11 +98,14 @@ Header: PRIVATE-TOKEN: <token>
 
 ## Important Patterns
 
+- **Provider abstraction**: `IVcsProvider` interface enables multi-provider support
+- **Services return data, not UI**: `VcsResult` type with `shouldShowUI` flag
+- **Factory pattern**: `VcsProviderFactory` auto-detects provider from remote URL
 - Uses VS Code Git API (`vscode.git`), not process spawning
-- Token stored in `SecretStorage` (encrypted)
+- Token stored in `SecretStorage` via `TokenService` (encrypted)
 - Cache auto-invalidates on git operations
 - MR selection: first merged by `merged_at` date
-- Shows token error once per session (deduplication)
+- Shows token error once per session (deduplication via provider state)
 
 ## Testing
 
@@ -103,6 +120,7 @@ Run in VS Code:
 - Token scope needed: `read_api`
 - Supports nested GitLab groups
 - Works with self-hosted GitLab instances
+- Architecture ready for GitHub/Bitbucket providers
 
 ## Development Guidelines
 

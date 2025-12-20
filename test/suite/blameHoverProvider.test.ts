@@ -3,15 +3,35 @@ import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { BlameHoverProvider } from "../../src/providers/BlameHoverProvider";
 import { GitService } from "../../src/services/GitService";
-import { GitLabService } from "../../src/services/GitLabService";
+import { VcsProviderFactory } from "../../src/services/VcsProviderFactory";
 import { CacheService } from "../../src/services/CacheService";
-import { MergeRequest } from "../../src/types";
+import { IVcsProvider } from "../../src/interfaces/IVcsProvider";
+import {
+  MergeRequest,
+  VcsResult,
+  VcsError,
+  VcsErrorType,
+  RemoteInfo,
+} from "../../src/interfaces/types";
 
 suite("BlameHoverProvider", () => {
   let blameHoverProvider: BlameHoverProvider;
   let mockGitService: sinon.SinonStubbedInstance<GitService>;
-  let mockGitLabService: sinon.SinonStubbedInstance<GitLabService>;
+  let mockVcsProviderFactory: sinon.SinonStubbedInstance<VcsProviderFactory>;
   let mockCacheService: sinon.SinonStubbedInstance<CacheService>;
+  let mockVcsProvider: {
+    id: string;
+    name: string;
+    setToken: sinon.SinonStub;
+    hasToken: sinon.SinonStub;
+    getHostUrl: sinon.SinonStub;
+    setHostUrl: sinon.SinonStub;
+    parseRemoteUrl: sinon.SinonStub;
+    isProviderUrl: sinon.SinonStub;
+    getMergeRequestForCommit: sinon.SinonStub;
+    resetErrorState: sinon.SinonStub;
+  };
+  let vcsErrorCallback: sinon.SinonSpy;
   let getConfigurationStub: sinon.SinonStub;
   let clock: sinon.SinonFakeTimers;
 
@@ -24,14 +44,37 @@ suite("BlameHoverProvider", () => {
 
     // Create mock services
     mockGitService = sinon.createStubInstance(GitService);
-    mockGitLabService = sinon.createStubInstance(GitLabService);
+    mockVcsProviderFactory = sinon.createStubInstance(VcsProviderFactory);
     mockCacheService = sinon.createStubInstance(CacheService);
+
+    // Create mock VCS provider
+    mockVcsProvider = {
+      id: "gitlab",
+      name: "GitLab",
+      setToken: sinon.stub(),
+      hasToken: sinon.stub().returns(true),
+      getHostUrl: sinon.stub().returns("https://gitlab.com"),
+      setHostUrl: sinon.stub(),
+      parseRemoteUrl: sinon.stub(),
+      isProviderUrl: sinon.stub().returns(true),
+      getMergeRequestForCommit: sinon.stub(),
+      resetErrorState: sinon.stub(),
+    };
+
+    // Setup factory to return mock provider
+    mockVcsProviderFactory.detectProvider.returns(
+      mockVcsProvider as unknown as IVcsProvider,
+    );
+
+    // Create error callback spy
+    vcsErrorCallback = sinon.spy();
 
     // Create provider with mocked dependencies
     blameHoverProvider = new BlameHoverProvider(
       mockGitService as unknown as GitService,
-      mockGitLabService as unknown as GitLabService,
+      mockVcsProviderFactory as unknown as VcsProviderFactory,
       mockCacheService as unknown as CacheService,
+      vcsErrorCallback,
     );
   });
 
@@ -386,6 +429,11 @@ suite("BlameHoverProvider", () => {
       mergedAt: "2025-01-15T12:00:00Z",
       state: "merged",
     };
+    const sampleRemoteInfo: RemoteInfo = {
+      projectPath: "group/project",
+      host: "https://gitlab.com",
+      provider: "gitlab",
+    };
 
     function createMockCancellationToken(
       isCancelled = false,
@@ -409,8 +457,8 @@ suite("BlameHoverProvider", () => {
         checked: true,
       });
       assert.strictEqual(mockCacheService.get.calledOnceWith(testSha), true);
-      // Should not call any other services
-      assert.strictEqual(mockGitLabService.hasToken.called, false);
+      // Should not call provider factory
+      assert.strictEqual(mockVcsProviderFactory.detectProvider.called, false);
     });
 
     test("returns cached null on cache hit with no MR", async () => {
@@ -446,26 +494,8 @@ suite("BlameHoverProvider", () => {
       pendingRequests.delete(testSha);
     });
 
-    test("returns unchecked when no token configured", async () => {
-      mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(false);
-      const token = createMockCancellationToken();
-
-      const result = await getMergeRequestInfo(testUri, testSha, token);
-
-      assert.deepStrictEqual(result, {
-        mr: null,
-        loading: false,
-        checked: false,
-      });
-      assert.strictEqual(mockGitLabService.hasToken.calledOnce, true);
-      // Should not proceed to get remote URL
-      assert.strictEqual(mockGitService.getRemoteUrl.called, false);
-    });
-
     test("returns unchecked when no remote URL found", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns(undefined);
       const token = createMockCancellationToken();
 
@@ -482,11 +512,10 @@ suite("BlameHoverProvider", () => {
       );
     });
 
-    test("returns unchecked when remote URL is not GitLab", async () => {
+    test("returns unchecked when no provider detected", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
-      mockGitService.getRemoteUrl.returns("https://github.com/user/repo.git");
-      mockGitLabService.parseRemoteUrl.returns(null);
+      mockGitService.getRemoteUrl.returns("https://unknown.com/user/repo.git");
+      mockVcsProviderFactory.detectProvider.returns(undefined);
       const token = createMockCancellationToken();
 
       const result = await getMergeRequestInfo(testUri, testSha, token);
@@ -497,8 +526,46 @@ suite("BlameHoverProvider", () => {
         checked: false,
       });
       assert.strictEqual(
-        mockGitLabService.parseRemoteUrl.calledOnceWith(
-          "https://github.com/user/repo.git",
+        mockVcsProviderFactory.detectProvider.calledOnceWith(
+          "https://unknown.com/user/repo.git",
+        ),
+        true,
+      );
+    });
+
+    test("returns unchecked when no token configured", async () => {
+      mockCacheService.get.returns(undefined);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(false);
+      const token = createMockCancellationToken();
+
+      const result = await getMergeRequestInfo(testUri, testSha, token);
+
+      assert.deepStrictEqual(result, {
+        mr: null,
+        loading: false,
+        checked: false,
+      });
+      assert.strictEqual(mockVcsProvider.hasToken.calledOnce, true);
+    });
+
+    test("returns unchecked when remote URL cannot be parsed", async () => {
+      mockCacheService.get.returns(undefined);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(null);
+      const token = createMockCancellationToken();
+
+      const result = await getMergeRequestInfo(testUri, testSha, token);
+
+      assert.deepStrictEqual(result, {
+        mr: null,
+        loading: false,
+        checked: false,
+      });
+      assert.strictEqual(
+        mockVcsProvider.parseRemoteUrl.calledOnceWith(
+          "git@gitlab.com:group/project.git",
         ),
         true,
       );
@@ -506,13 +573,14 @@ suite("BlameHoverProvider", () => {
 
     test("fetches MR from API and returns it on success", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
-      mockGitLabService.getMergeRequestForCommit.resolves(sampleMR);
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const successResult: VcsResult<MergeRequest | null> = {
+        success: true,
+        data: sampleMR,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(successResult);
       const token = createMockCancellationToken();
 
       const result = await getMergeRequestInfo(testUri, testSha, token);
@@ -523,10 +591,10 @@ suite("BlameHoverProvider", () => {
         checked: true,
       });
       assert.strictEqual(
-        mockGitLabService.getMergeRequestForCommit.calledOnceWith(
+        mockVcsProvider.getMergeRequestForCommit.calledOnceWith(
           "group/project",
           testSha,
-          "gitlab.com",
+          "https://gitlab.com",
         ),
         true,
       );
@@ -534,13 +602,14 @@ suite("BlameHoverProvider", () => {
 
     test("caches MR result after successful fetch", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
-      mockGitLabService.getMergeRequestForCommit.resolves(sampleMR);
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const successResult: VcsResult<MergeRequest | null> = {
+        success: true,
+        data: sampleMR,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(successResult);
       const token = createMockCancellationToken();
 
       await getMergeRequestInfo(testUri, testSha, token);
@@ -553,13 +622,14 @@ suite("BlameHoverProvider", () => {
 
     test("caches null result when API returns no MR", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
-      mockGitLabService.getMergeRequestForCommit.resolves(null);
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const successResult: VcsResult<MergeRequest | null> = {
+        success: true,
+        data: null,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(successResult);
       const token = createMockCancellationToken();
 
       const result = await getMergeRequestInfo(testUri, testSha, token);
@@ -577,13 +647,14 @@ suite("BlameHoverProvider", () => {
 
     test("cleans up pending request after completion", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
-      mockGitLabService.getMergeRequestForCommit.resolves(sampleMR);
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const successResult: VcsResult<MergeRequest | null> = {
+        success: true,
+        data: sampleMR,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(successResult);
       const token = createMockCancellationToken();
 
       const pendingRequests = getPendingRequests();
@@ -598,19 +669,18 @@ suite("BlameHoverProvider", () => {
 
     test("adds pending request during API call", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
 
       // Use a deferred promise to control timing
-      let resolveApiCall: (mr: MergeRequest) => void;
-      const apiPromise = new Promise<MergeRequest>((resolve) => {
-        resolveApiCall = resolve;
-      });
-      mockGitLabService.getMergeRequestForCommit.returns(apiPromise);
+      let resolveApiCall: (result: VcsResult<MergeRequest | null>) => void;
+      const apiPromise = new Promise<VcsResult<MergeRequest | null>>(
+        (resolve) => {
+          resolveApiCall = resolve;
+        },
+      );
+      mockVcsProvider.getMergeRequestForCommit.returns(apiPromise);
       const token = createMockCancellationToken();
 
       const pendingRequests = getPendingRequests();
@@ -624,7 +694,7 @@ suite("BlameHoverProvider", () => {
       assert.strictEqual(pendingRequests.has(testSha), true);
 
       // Resolve the API call
-      resolveApiCall!(sampleMR);
+      resolveApiCall!({ success: true, data: sampleMR });
       await resultPromise;
 
       // Pending request should be cleaned up
@@ -633,12 +703,9 @@ suite("BlameHoverProvider", () => {
 
     test("returns unchecked when request is cancelled during fetch", async () => {
       mockCacheService.get.returns(undefined);
-      mockGitLabService.hasToken.returns(true);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
-      mockGitLabService.parseRemoteUrl.returns({
-        projectPath: "group/project",
-        host: "gitlab.com",
-      });
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
 
       // Create a cancellation token that we can trigger
       const onCancellationRequestedEmitter = new vscode.EventEmitter<void>();
@@ -651,12 +718,12 @@ suite("BlameHoverProvider", () => {
       };
 
       // API call that triggers cancellation before resolving
-      mockGitLabService.getMergeRequestForCommit.callsFake(async () => {
+      mockVcsProvider.getMergeRequestForCommit.callsFake(async () => {
         // Trigger cancellation
         isCancelled = true;
         onCancellationRequestedEmitter.fire();
         // Return after cancellation
-        return sampleMR;
+        return { success: true, data: sampleMR };
       });
 
       const result = await getMergeRequestInfo(testUri, testSha, token);
@@ -667,6 +734,57 @@ suite("BlameHoverProvider", () => {
         loading: false,
         checked: false,
       });
+    });
+
+    test("calls error callback on VCS error", async () => {
+      mockCacheService.get.returns(undefined);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const vcsError: VcsError = {
+        type: VcsErrorType.InvalidToken,
+        message: "Invalid token",
+        shouldShowUI: true,
+      };
+      const errorResult: VcsResult<MergeRequest | null> = {
+        success: false,
+        error: vcsError,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(errorResult);
+      const token = createMockCancellationToken();
+
+      await getMergeRequestInfo(testUri, testSha, token);
+
+      assert.strictEqual(vcsErrorCallback.calledOnce, true);
+      assert.deepStrictEqual(vcsErrorCallback.firstCall.args[0], vcsError);
+      assert.strictEqual(
+        vcsErrorCallback.firstCall.args[1],
+        mockVcsProvider as unknown as IVcsProvider,
+      );
+    });
+
+    test("caches null on VCS error to avoid repeated errors", async () => {
+      mockCacheService.get.returns(undefined);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+      const errorResult: VcsResult<MergeRequest | null> = {
+        success: false,
+        error: {
+          type: VcsErrorType.NetworkError,
+          message: "Network error",
+          shouldShowUI: false,
+        },
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(errorResult);
+      const token = createMockCancellationToken();
+
+      await getMergeRequestInfo(testUri, testSha, token);
+
+      assert.strictEqual(
+        mockCacheService.set.calledOnceWith(testSha, null),
+        true,
+      );
     });
   });
 });

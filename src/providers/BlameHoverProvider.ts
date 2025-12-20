@@ -1,11 +1,18 @@
 import * as vscode from "vscode";
 import { GitService } from "../services/GitService";
-import { GitLabService } from "../services/GitLabService";
-import { CacheService } from "../services/CacheService";
-import { MergeRequest, BlameInfo } from "../types";
+import { VcsProviderFactory } from "../services/VcsProviderFactory";
+import { ICacheService } from "../interfaces/ICacheService";
+import { IVcsProvider } from "../interfaces/IVcsProvider";
+import { MergeRequest, BlameInfo, VcsError } from "../interfaces/types";
 
 /**
- * Provides hover information for git blame with GitLab MR links
+ * Callback for handling VCS errors with UI
+ */
+export type VcsErrorHandler = (error: VcsError, provider: IVcsProvider) => void;
+
+/**
+ * Provides hover information for git blame with MR/PR links
+ * Works with any VCS provider (GitLab, GitHub, etc.) via VcsProviderFactory
  */
 export class BlameHoverProvider implements vscode.HoverProvider {
   private static readonly MR_TITLE_MAX_LENGTH = 50;
@@ -13,8 +20,9 @@ export class BlameHoverProvider implements vscode.HoverProvider {
 
   constructor(
     private gitService: GitService,
-    private gitLabService: GitLabService,
-    private cacheService: CacheService,
+    private vcsProviderFactory: VcsProviderFactory,
+    private cacheService: ICacheService,
+    private onVcsError?: VcsErrorHandler,
   ) {}
 
   async provideHover(
@@ -117,24 +125,30 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       return { mr: null, loading: true, checked: false };
     }
 
-    // Check if token is configured
-    if (!this.gitLabService.hasToken()) {
-      return { mr: null, loading: false, checked: false };
-    }
-
-    // Get remote URL and parse it
+    // Get remote URL and detect provider
     const remoteUrl = this.gitService.getRemoteUrl(uri);
     if (!remoteUrl) {
       return { mr: null, loading: false, checked: false };
     }
 
-    const remoteInfo = this.gitLabService.parseRemoteUrl(remoteUrl);
+    const provider = this.vcsProviderFactory.detectProvider(remoteUrl);
+    if (!provider) {
+      return { mr: null, loading: false, checked: false };
+    }
+
+    // Check if provider has a token configured
+    if (!provider.hasToken()) {
+      return { mr: null, loading: false, checked: false };
+    }
+
+    const remoteInfo = provider.parseRemoteUrl(remoteUrl);
     if (!remoteInfo) {
       return { mr: null, loading: false, checked: false };
     }
 
     // Start API request
     const requestPromise = this.fetchAndCacheMR(
+      provider,
       remoteInfo.projectPath,
       sha,
       remoteInfo.host,
@@ -164,19 +178,29 @@ export class BlameHoverProvider implements vscode.HoverProvider {
    * Fetch MR from API and cache the result
    */
   private async fetchAndCacheMR(
+    provider: IVcsProvider,
     projectPath: string,
     sha: string,
-    gitlabHost: string,
+    host: string,
   ): Promise<MergeRequest | null> {
-    const mr = await this.gitLabService.getMergeRequestForCommit(
+    const result = await provider.getMergeRequestForCommit(
       projectPath,
       sha,
-      gitlabHost,
+      host,
     );
 
-    // Cache the result (even if null, to avoid repeated API calls)
-    this.cacheService.set(sha, mr);
+    // Handle errors - delegate to extension for UI
+    if (!result.success && result.error) {
+      if (this.onVcsError) {
+        this.onVcsError(result.error, provider);
+      }
+      // Cache null to avoid repeated errors
+      this.cacheService.set(sha, null);
+      return null;
+    }
 
+    const mr = result.data ?? null;
+    this.cacheService.set(sha, mr);
     return mr;
   }
 

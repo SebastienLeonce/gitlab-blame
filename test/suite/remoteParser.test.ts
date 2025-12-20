@@ -127,10 +127,11 @@ suite("Remote Parser", () => {
       );
     });
 
-    test("returns true for valid git URL (potential GitLab)", () => {
+    test("returns false for non-GitLab git URL", () => {
+      // After multi-provider refactoring, we only identify URLs with 'gitlab' in hostname
       assert.strictEqual(
         isGitLabRemote("git@example.com:group/project.git"),
-        true,
+        false,
       );
     });
 

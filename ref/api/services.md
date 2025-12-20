@@ -81,97 +81,120 @@ Get the origin remote URL for a repository.
 
 ---
 
-## GitLabService
+## VcsProviderFactory
 
-**Location**: `src/services/GitLabService.ts`
+**Location**: `src/services/VcsProviderFactory.ts`
 
-Client for GitLab REST API operations.
-
-### Error Types
-
-#### `GitLabErrorType` (enum)
-
-```typescript
-enum GitLabErrorType {
-  NoToken = "NO_TOKEN",
-  InvalidToken = "INVALID_TOKEN",
-  RateLimited = "RATE_LIMITED",
-  NetworkError = "NETWORK_ERROR",
-  NotFound = "NOT_FOUND",
-  Unknown = "UNKNOWN",
-}
-```
-
-#### `GitLabError` (interface)
-
-```typescript
-interface GitLabError {
-  type: GitLabErrorType;
-  message: string;
-  statusCode?: number;
-}
-```
+Factory for creating and managing VCS provider instances. Supports automatic provider detection from remote URLs.
 
 ### Constructor
 
 ```typescript
-const gitLabService = new GitLabService();
+const factory = new VcsProviderFactory();
 ```
-
-Reads `gitlabBlame.gitlabUrl` from VS Code configuration.
 
 ### Methods
 
-#### `setToken(token: string | undefined): void`
+#### `registerProvider(provider: IVcsProvider): void`
 
-Set the Personal Access Token for API authentication.
+Register a VCS provider implementation.
 
-#### `hasToken(): boolean`
+**Parameters**:
+- `provider`: Provider implementing `IVcsProvider` interface
 
-Check if a token is configured.
-
-#### `getGitLabUrl(): string`
-
-Get the configured GitLab instance URL.
-
-#### `setGitLabUrl(url: string): void`
-
-Update the GitLab URL (called when configuration changes).
-
-#### `parseRemoteUrl(remoteUrl: string): GitLabRemoteInfo | null`
-
-Parse a git remote URL to extract host and project path.
-
-**Returns**:
+**Example**:
 ```typescript
-interface GitLabRemoteInfo {
-  host: string;       // e.g., "https://gitlab.com"
-  projectPath: string; // e.g., "group/project"
+const gitlabProvider = new GitLabProvider("https://gitlab.com");
+factory.registerProvider(gitlabProvider);
+```
+
+#### `getProvider(providerId: string): IVcsProvider | undefined`
+
+Get a provider by its ID.
+
+**Parameters**:
+- `providerId`: Provider identifier (e.g., "gitlab", "github")
+
+**Returns**: Provider instance or `undefined` if not registered.
+
+#### `detectProvider(remoteUrl: string): IVcsProvider | undefined`
+
+Auto-detect provider from a git remote URL.
+
+**Parameters**:
+- `remoteUrl`: Git remote URL (SSH or HTTPS)
+
+**Returns**: Matching provider or `undefined` if none match.
+
+**Example**:
+```typescript
+const provider = factory.detectProvider("git@gitlab.com:group/project.git");
+if (provider) {
+  const result = await provider.getMergeRequestForCommit(projectPath, sha);
 }
 ```
 
-#### `getMergeRequestForCommit(projectPath: string, commitSha: string, gitlabHost?: string): Promise<MergeRequest | null>`
+#### `getAllProviders(): IVcsProvider[]`
 
-Fetch the MR associated with a commit.
+Get all registered providers.
+
+#### `clear(): void`
+
+Remove all registered providers.
+
+---
+
+## TokenService
+
+**Location**: `src/services/TokenService.ts`
+
+Manages authentication tokens for multiple VCS providers using VS Code's SecretStorage.
+
+### Constructor
+
+```typescript
+const tokenService = new TokenService(context.secrets);
+```
 
 **Parameters**:
-- `projectPath`: GitLab project path (e.g., "group/project")
-- `commitSha`: Full commit SHA
-- `gitlabHost`: Optional GitLab host (uses configured URL if omitted)
+- `secretStorage`: VS Code SecretStorage instance from extension context
 
-**Returns**: `MergeRequest` object or `null` if not found.
+### Methods
 
-**API Endpoint**: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
+#### `loadTokens(): Promise<void>`
 
-**MR Selection Logic**:
-1. Filter to merged MRs with `merged_at` date
-2. Sort by `merged_at` ascending
-3. Return first (earliest merged)
-4. Fallback: return first MR if none are merged
+Load all provider tokens from secure storage.
 
-#### `resetTokenErrorFlag(): void`
+**Example**:
+```typescript
+await tokenService.loadTokens();
+const gitlabToken = tokenService.getToken("gitlab");
+```
 
-Reset the error flag to allow showing token errors again.
+#### `getToken(providerId: string): string | undefined`
+
+Get token for a specific provider.
+
+**Parameters**:
+- `providerId`: Provider identifier (e.g., "gitlab")
+
+**Returns**: Token string or `undefined` if not set.
+
+#### `setToken(providerId: string, token: string): Promise<void>`
+
+Set and persist token for a provider.
+
+**Parameters**:
+- `providerId`: Provider identifier
+- `token`: Authentication token
+
+#### `deleteToken(providerId: string): Promise<void>`
+
+Delete token for a provider.
+
+#### `hasToken(providerId: string): boolean`
+
+Check if a token exists for a provider.
 
 ---
 
@@ -179,7 +202,7 @@ Reset the error flag to allow showing token errors again.
 
 **Location**: `src/services/CacheService.ts`
 
-TTL-based cache for commit SHA to MR mappings.
+TTL-based cache for commit SHA to MR mappings. Implements `ICacheService` interface.
 
 ### Constructor
 
@@ -233,9 +256,42 @@ Clean up watchers and clear cache.
 
 ---
 
+## GitLabService (Deprecated)
+
+> **⚠️ Deprecated**: Use `GitLabProvider` from `src/providers/vcs/GitLabProvider.ts` instead.
+> This service will be removed in a future version.
+
+**Location**: `src/services/GitLabService.ts`
+
+**Migration**:
+- `GitLabService.getMergeRequestForCommit()` → `GitLabProvider.getMergeRequestForCommit()`
+- `GitLabService.parseRemoteUrl()` → `GitLabProvider.parseRemoteUrl()`
+- Error handling now returns `VcsResult` instead of showing UI directly
+
+### Error Types (Deprecated)
+
+Use `VcsErrorType` from `src/interfaces/types.ts` instead.
+
+```typescript
+// Old (deprecated)
+enum GitLabErrorType { ... }
+
+// New
+enum VcsErrorType {
+  NoToken = "NO_TOKEN",
+  InvalidToken = "INVALID_TOKEN",
+  RateLimited = "RATE_LIMITED",
+  NetworkError = "NETWORK_ERROR",
+  NotFound = "NOT_FOUND",
+  Unknown = "UNKNOWN",
+}
+```
+
+---
+
 ## Type Definitions
 
-**Location**: `src/types/index.ts`
+**Location**: `src/interfaces/types.ts` (also re-exported from `src/types/index.ts`)
 
 ### MergeRequest
 
@@ -259,6 +315,37 @@ interface BlameInfo {
   date: Date;            // Commit date
   summary: string;       // Commit message first line
   line: number;          // 1-based line number
+}
+```
+
+### RemoteInfo
+
+```typescript
+interface RemoteInfo {
+  host: string;          // e.g., "https://gitlab.com"
+  projectPath: string;   // e.g., "group/project"
+  provider: string;      // e.g., "gitlab"
+}
+```
+
+### VcsResult
+
+```typescript
+interface VcsResult<T> {
+  success: boolean;
+  data?: T;
+  error?: VcsError;
+}
+```
+
+### VcsError
+
+```typescript
+interface VcsError {
+  type: VcsErrorType;
+  message: string;
+  statusCode?: number;
+  shouldShowUI?: boolean;
 }
 ```
 

@@ -319,6 +319,179 @@ for (const line of lines) {
 
 ---
 
+## Provider Abstraction Patterns
+
+### Interface-Based Provider Design
+
+Define a common interface for all VCS providers:
+
+```typescript
+// src/interfaces/IVcsProvider.ts
+interface IVcsProvider {
+  readonly id: string;
+  readonly name: string;
+
+  setToken(token: string | undefined): void;
+  hasToken(): boolean;
+  parseRemoteUrl(remoteUrl: string): RemoteInfo | null;
+  isProviderUrl(remoteUrl: string): boolean;
+  getMergeRequestForCommit(
+    projectPath: string,
+    commitSha: string,
+    hostUrl?: string,
+  ): Promise<VcsResult<MergeRequest | null>>;
+  resetErrorState(): void;
+}
+
+// Implement for each provider
+class GitLabProvider implements IVcsProvider {
+  readonly id = "gitlab";
+  readonly name = "GitLab";
+  // ... implementation
+}
+```
+
+### Provider Factory Pattern
+
+Auto-detect provider from remote URL:
+
+```typescript
+class VcsProviderFactory {
+  private providers = new Map<string, IVcsProvider>();
+
+  registerProvider(provider: IVcsProvider): void {
+    this.providers.set(provider.id, provider);
+  }
+
+  detectProvider(remoteUrl: string): IVcsProvider | undefined {
+    for (const provider of this.providers.values()) {
+      if (provider.isProviderUrl(remoteUrl)) {
+        return provider;
+      }
+    }
+    return undefined;
+  }
+}
+
+// Usage
+const factory = new VcsProviderFactory();
+factory.registerProvider(new GitLabProvider());
+factory.registerProvider(new GitHubProvider());
+
+const provider = factory.detectProvider("git@gitlab.com:group/project.git");
+// Returns GitLabProvider
+```
+
+### VcsResult Error Handling
+
+Services return results, not UI:
+
+```typescript
+// Define result type
+interface VcsResult<T> {
+  success: boolean;
+  data?: T;
+  error?: VcsError;
+}
+
+interface VcsError {
+  type: VcsErrorType;
+  message: string;
+  statusCode?: number;
+  shouldShowUI?: boolean; // Flag for UI layer decision
+}
+
+// Provider returns result
+async getMergeRequestForCommit(
+  projectPath: string,
+  sha: string
+): Promise<VcsResult<MergeRequest | null>> {
+  if (!this.token) {
+    return {
+      success: false,
+      error: {
+        type: VcsErrorType.NoToken,
+        message: "No token configured",
+        shouldShowUI: !this.hasShownError, // Show once
+      },
+    };
+  }
+
+  try {
+    const mr = await this.fetchMR(projectPath, sha);
+    return { success: true, data: mr };
+  } catch (error) {
+    return {
+      success: false,
+      error: {
+        type: VcsErrorType.NetworkError,
+        message: error.message,
+        shouldShowUI: false,
+      },
+    };
+  }
+}
+
+// Extension handles UI
+function handleVcsError(error: VcsError, provider: IVcsProvider): void {
+  if (!error.shouldShowUI) return;
+
+  switch (error.type) {
+    case VcsErrorType.NoToken:
+      vscode.window.showWarningMessage(
+        `${provider.name}: No token configured`,
+        "Set Token"
+      );
+      break;
+    case VcsErrorType.InvalidToken:
+      vscode.window.showErrorMessage(
+        `${provider.name}: Invalid token`,
+        "Set Token"
+      );
+      break;
+  }
+}
+```
+
+### Error Callback Delegation
+
+Pass error handler to provider consumers:
+
+```typescript
+// Define callback type
+type VcsErrorHandler = (error: VcsError, provider: IVcsProvider) => void;
+
+// Accept callback in constructor
+class BlameHoverProvider {
+  constructor(
+    private gitService: GitService,
+    private factory: VcsProviderFactory,
+    private cache: ICacheService,
+    private onVcsError?: VcsErrorHandler,
+  ) {}
+
+  private async fetchMR(provider: IVcsProvider, ...): Promise<MergeRequest | null> {
+    const result = await provider.getMergeRequestForCommit(...);
+
+    if (!result.success && result.error && this.onVcsError) {
+      this.onVcsError(result.error, provider);
+    }
+
+    return result.data ?? null;
+  }
+}
+
+// Extension provides handler
+const hoverProvider = new BlameHoverProvider(
+  gitService,
+  factory,
+  cache,
+  handleVcsError, // UI logic lives here
+);
+```
+
+---
+
 ## Error Handling Patterns
 
 ### Graceful Degradation

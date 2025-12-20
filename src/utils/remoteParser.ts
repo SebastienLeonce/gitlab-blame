@@ -82,15 +82,18 @@ export function extractProjectPath(remoteUrl: string): string | null {
  * @returns true if the URL looks like a GitLab remote
  */
 export function isGitLabRemote(remoteUrl: string): boolean {
-  const lowerUrl = remoteUrl.toLowerCase();
-
-  // Check for gitlab in the hostname
-  if (lowerUrl.includes("gitlab")) {
-    return true;
+  // Check for gitlab in the hostname (SSH format)
+  const sshMatch = remoteUrl.match(/^git@([^:]+):/);
+  if (sshMatch) {
+    const host = sshMatch[1].toLowerCase();
+    return host.includes("gitlab");
   }
 
-  // Could be a self-hosted GitLab without "gitlab" in the name
-  // For now, we assume any valid git remote could be GitLab
-  // The actual validation happens when we try to call the API
-  return parseGitLabRemote(remoteUrl) !== null;
+  // Check for gitlab in the hostname (HTTPS format)
+  try {
+    const url = new URL(remoteUrl);
+    return url.hostname.toLowerCase().includes("gitlab");
+  } catch {
+    return false;
+  }
 }
