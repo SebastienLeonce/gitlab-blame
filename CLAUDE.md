@@ -12,6 +12,7 @@ VS Code extension that adds GitLab Merge Request links to git blame hovers. Mult
 |-------|-----------|
 | **Architecture** | `ref/architecture.md` - System design, data flow, components |
 | **Quality Assurance** | `ref/quality-assurance.md` - Git hooks, testing, coverage |
+| **Release Process** | `ref/release-process.md` - Versioning, CI/CD, publishing |
 | **Services API** | `ref/api/services.md` - Service interfaces and contracts |
 | **Providers API** | `ref/api/providers.md` - VCS provider interface |
 | **Utilities API** | `ref/api/utilities.md` - Helper functions |
@@ -51,6 +52,7 @@ src/
 ref/                                 # Documentation (for humans)
 ├── architecture.md                  # System architecture
 ├── quality-assurance.md             # Git hooks, testing, quality standards
+├── release-process.md               # Versioning, CI/CD, publishing
 ├── configuration.md                 # Settings reference
 ├── patterns.md                      # Code patterns
 ├── multi-provider.md                # Provider guide
