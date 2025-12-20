@@ -126,8 +126,8 @@ npm run publish         # Publish to marketplace
 - 📝 Documentation sync reminder (non-blocking)
 
 ### Pre-Push (~20-30s)
-- ✅ Full test suite (200+ tests)
-- ✅ Coverage threshold (90% lines, 85% branches)
+- ✅ Full test suite (225 tests)
+- ✅ Coverage threshold (90% lines, 85% branches, 90% functions, 90% statements)
 - ✅ Production build verification
 - ✅ No focused tests (`.only()`)
 
@@ -332,8 +332,8 @@ Extract to a well-named method:
 - **Runtime Dependencies**: None (zero dependencies)
 - **Dev Dependencies**: TypeScript, ESLint, esbuild, Mocha, Sinon, Husky
 - **Extension API**: Uses `vscode.git` (built-in)
-- **Test Count**: 200+ tests, ~350ms execution
-- **Coverage**: 95%+ (enforced: 90% lines, 85% branches)
+- **Test Count**: 225 tests, ~500ms execution
+- **Coverage**: 93-96% across all metrics (enforced: 90% lines/functions/statements, 85% branches)
 - **GitLab API**: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
 
 ---

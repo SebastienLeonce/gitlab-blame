@@ -86,7 +86,7 @@ Runs on **every push** to prevent broken code from reaching remote:
 
 3. **Full Test Suite with Coverage**
    - Runs: `npm run test:coverage`
-   - Executes: All 200+ unit tests
+   - Executes: All 225 unit and integration tests
    - Measures: Code coverage with c8
    - Enforces: Coverage thresholds (see below)
    - Fails on: Test failures OR coverage below thresholds
@@ -102,10 +102,10 @@ Enforced by c8 configuration in `package.json`:
 
 | Metric | Threshold | Current |
 |--------|-----------|---------|
-| Lines | 90% | ~95% |
-| Functions | 90% | ~95% |
-| Branches | 85% | ~95% |
-| Statements | 90% | ~95% |
+| Lines | 90% | 93.6% ✅ |
+| Functions | 90% | 94.2% ✅ |
+| Branches | 85% | 95.9% ✅ |
+| Statements | 90% | 93.6% ✅ |
 
 #### Bypass
 
@@ -308,17 +308,18 @@ This runs (in order):
 
 Equivalent to running both git hooks manually.
 
-### Continuous Integration (Future)
+### Continuous Integration
 
-Git hooks should be mirrored in CI/CD (GitHub Actions, GitLab CI, etc.) to ensure quality gates cannot be bypassed via `--no-verify`.
+Git hooks are mirrored in GitHub Actions CI to ensure quality gates cannot be bypassed via `--no-verify`.
 
-**Recommended CI checks**:
-- ✅ Lint
-- ✅ Type check
-- ✅ Tests with coverage
-- ✅ Production build
-- ✅ Package extension (`.vsix`)
-- ✅ Security audit (`npm audit`)
+**CI Pipeline** (`.github/workflows/ci.yml`):
+- ✅ Lint - ESLint check
+- ✅ Type check - TypeScript compilation
+- ✅ Tests with coverage - Full test suite with c8 coverage enforcement
+- ✅ Production build - esbuild bundle verification
+- ✅ Coverage upload - Codecov integration for coverage tracking
+
+The CI runs on every push to `main` and on all pull requests.
 
 ---
 

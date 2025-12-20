@@ -787,4 +787,234 @@ suite("BlameHoverProvider", () => {
       );
     });
   });
+
+  suite("provideHover - PUBLIC API", () => {
+    const testUri = vscode.Uri.file("/test/file.ts");
+    const testPosition = new vscode.Position(10, 5);
+    const testBlameInfo = {
+      sha: "abc123def456",
+      author: "John Doe",
+      authorEmail: "john@example.com",
+      date: new Date("2024-01-15T12:00:00Z"),
+      summary: "Fix bug in authentication",
+      line: 11,
+    };
+    const sampleMR: MergeRequest = {
+      iid: 42,
+      title: "Test MR",
+      webUrl: "https://gitlab.com/group/project/-/merge_requests/42",
+      mergedAt: "2025-01-15T12:00:00Z",
+      state: "merged",
+    };
+
+    function createMockCancellationToken(
+      isCancelled = false,
+    ): vscode.CancellationToken {
+      const onCancellationRequestedEmitter = new vscode.EventEmitter<void>();
+      return {
+        isCancellationRequested: isCancelled,
+        onCancellationRequested: onCancellationRequestedEmitter.event,
+      };
+    }
+
+    test("returns hover with MR link when commit has MR", async () => {
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockCacheService.get.returns(sampleMR);
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.ok(result);
+      assert.ok(result instanceof vscode.Hover);
+      const markdown = result.contents[0] as vscode.MarkdownString;
+      assert.ok(markdown.value.includes("**Merge Request**"));
+      assert.ok(markdown.value.includes("!42"));
+      assert.ok(markdown.value.includes("Test MR"));
+      assert.ok(markdown.value.includes("abc123d")); // Short SHA
+      assert.ok(markdown.value.includes("John Doe"));
+      assert.ok(markdown.value.includes("Fix bug in authentication"));
+    });
+
+    test("returns hover without MR link when commit has no MR", async () => {
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockCacheService.get.returns(null); // Cached as "no MR"
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.ok(result);
+      const markdown = result.contents[0] as vscode.MarkdownString;
+      assert.ok(!markdown.value.includes("**Merge Request**"));
+      assert.ok(markdown.value.includes("*No associated merge request*"));
+      assert.ok(markdown.value.includes("abc123d"));
+      assert.ok(markdown.value.includes("John Doe"));
+    });
+
+    test("returns null when no blame info available", async () => {
+      mockGitService.getBlameForLine.resolves(undefined);
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.strictEqual(result, null);
+    });
+
+    test("returns null when cancellation requested before hover build", async () => {
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      const token = createMockCancellationToken(true); // Already cancelled
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.strictEqual(result, null);
+    });
+
+    test("includes loading state when MR fetch is pending", async () => {
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockCacheService.get.returns(undefined); // Not cached
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns({
+        projectPath: "group/project",
+        host: "https://gitlab.com",
+        provider: "gitlab",
+      });
+
+      // Simulate pending request by adding to pendingRequests map
+      const pendingRequests = (
+        blameHoverProvider as unknown as {
+          pendingRequests: Map<string, Promise<MergeRequest | null>>;
+        }
+      ).pendingRequests;
+      pendingRequests.set(testBlameInfo.sha, Promise.resolve(sampleMR));
+
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.ok(result);
+      const markdown = result.contents[0] as vscode.MarkdownString;
+      assert.ok(markdown.value.includes("*Loading merge request...*"));
+
+      // Cleanup
+      pendingRequests.delete(testBlameInfo.sha);
+    });
+
+    test("formats MR link with truncation for long titles", async () => {
+      const longTitleMR: MergeRequest = {
+        iid: 123,
+        title:
+          "This is a very long merge request title that exceeds fifty characters",
+        webUrl: "https://gitlab.com/group/project/-/merge_requests/123",
+        mergedAt: "2025-01-15T12:00:00Z",
+        state: "merged",
+      };
+
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockCacheService.get.returns(longTitleMR);
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.ok(result);
+      const markdown = result.contents[0] as vscode.MarkdownString;
+      assert.ok(markdown.value.includes("!123"));
+      // Should include ellipsis in the display text (escaped as \\.\\.\\.)
+      // The title is truncated in the link display, not the tooltip
+      assert.ok(
+        markdown.value.includes("\\.\\.\\.") || markdown.value.includes("..."),
+      );
+      // Link should still be present with webUrl
+      assert.ok(
+        markdown.value.includes(
+          "https://gitlab.com/group/project/-/merge_requests/123",
+        ),
+      );
+    });
+
+    test("escapes markdown in author name via provideHover", async () => {
+      const blameWithMarkdown = {
+        ...testBlameInfo,
+        author: "**Evil Author**", // Contains markdown
+        summary: "_Sneaky_ commit [link](url)",
+      };
+
+      mockGitService.getBlameForLine.resolves(blameWithMarkdown);
+      mockCacheService.get.returns(null);
+      const token = createMockCancellationToken();
+
+      const result = await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      assert.ok(result);
+      const markdown = result.contents[0] as vscode.MarkdownString;
+      // Markdown should be escaped
+      assert.ok(markdown.value.includes("\\*\\*Evil Author\\*\\*"));
+      assert.ok(markdown.value.includes("\\_Sneaky\\_"));
+      assert.ok(markdown.value.includes("\\[link\\]"));
+    });
+
+    test("handles VCS error by calling error callback", async () => {
+      const sampleRemoteInfo = {
+        projectPath: "group/project",
+        host: "https://gitlab.com",
+        provider: "gitlab" as const,
+      };
+
+      mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockCacheService.get.returns(undefined); // Not cached
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
+      mockVcsProvider.hasToken.returns(true);
+      mockVcsProvider.parseRemoteUrl.returns(sampleRemoteInfo);
+
+      const vcsError: VcsError = {
+        type: VcsErrorType.InvalidToken,
+        message: "Invalid token",
+        shouldShowUI: true,
+      };
+      const errorResult: VcsResult<MergeRequest | null> = {
+        success: false,
+        error: vcsError,
+      };
+      mockVcsProvider.getMergeRequestForCommit.resolves(errorResult);
+
+      const token = createMockCancellationToken();
+
+      await blameHoverProvider.provideHover(
+        { uri: testUri } as vscode.TextDocument,
+        testPosition,
+        token,
+      );
+
+      // Error callback should have been invoked
+      assert.strictEqual(vcsErrorCallback.calledOnce, true);
+      assert.deepStrictEqual(vcsErrorCallback.firstCall.args[0], vcsError);
+    });
+  });
 });

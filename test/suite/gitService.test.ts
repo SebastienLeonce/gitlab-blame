@@ -490,4 +490,176 @@ abc123def (another.user     2025-08-15 10:30:00 +0000   3) } from 'module';`;
       assert.strictEqual(gitService.getAPI(), undefined);
     });
   });
+
+  suite("getBlameForFile - PUBLIC API", () => {
+    test("returns blame map for all lines in file", async () => {
+      // Mock the Git API and repository
+      const mockRepo = {
+        blame: sinon
+          .stub()
+          .resolves(
+            [
+              "a1b2c3d4e (John Doe        2024-01-01 10:00:00 +0000   1) line 1",
+              "b2c3d4e5f (Jane Smith      2024-01-02 11:00:00 +0000   2) line 2",
+              "c3d4e5f6a (Bob Johnson     2024-01-03 12:00:00 +0000   3) line 3",
+            ].join("\n"),
+          ),
+      };
+
+      const mockApi = {
+        getRepository: sinon.stub().returns(mockRepo),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      // Setup Git API
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = await gitService.getBlameForFile(testUri);
+
+      assert.ok(result);
+      assert.strictEqual(result.size, 3);
+      assert.ok(result.has(1));
+      assert.ok(result.has(2));
+      assert.ok(result.has(3));
+
+      const line1 = result.get(1);
+      assert.strictEqual(line1?.sha, "a1b2c3d4e");
+      assert.strictEqual(line1?.author, "John Doe");
+    });
+
+    test("returns undefined when no repository found", async () => {
+      const mockApi = {
+        getRepository: sinon.stub().returns(null),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = await gitService.getBlameForFile(testUri);
+
+      assert.strictEqual(result, undefined);
+    });
+
+    test("returns undefined on blame failure", async () => {
+      const mockRepo = {
+        blame: sinon.stub().rejects(new Error("Git blame failed")),
+      };
+
+      const mockApi = {
+        getRepository: sinon.stub().returns(mockRepo),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = await gitService.getBlameForFile(testUri);
+
+      // Should handle error gracefully and return undefined
+      assert.strictEqual(result, undefined);
+    });
+  });
+
+  suite("getRemoteUrl - PUBLIC API", () => {
+    test("returns fetchUrl when available", () => {
+      const mockRepo = {
+        state: {
+          remotes: [
+            {
+              name: "origin",
+              fetchUrl: "git@gitlab.com:group/project.git",
+              pushUrl: "git@gitlab.com:group/project.git",
+            },
+          ],
+        },
+      };
+
+      const mockApi = {
+        getRepository: sinon.stub().returns(mockRepo),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = gitService.getRemoteUrl(testUri);
+
+      assert.strictEqual(result, "git@gitlab.com:group/project.git");
+    });
+
+    test("returns pushUrl when fetchUrl not available", () => {
+      const mockRepo = {
+        state: {
+          remotes: [
+            {
+              name: "origin",
+              fetchUrl: undefined,
+              pushUrl: "https://gitlab.com/group/project.git",
+            },
+          ],
+        },
+      };
+
+      const mockApi = {
+        getRepository: sinon.stub().returns(mockRepo),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = gitService.getRemoteUrl(testUri);
+
+      assert.strictEqual(result, "https://gitlab.com/group/project.git");
+    });
+
+    test("returns undefined when no repository found", () => {
+      const mockApi = {
+        getRepository: sinon.stub().returns(null),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = gitService.getRemoteUrl(testUri);
+
+      assert.strictEqual(result, undefined);
+    });
+
+    test("returns undefined when no origin remote found", () => {
+      const mockRepo = {
+        state: {
+          remotes: [
+            {
+              name: "upstream",
+              fetchUrl: "git@gitlab.com:upstream/project.git",
+              pushUrl: "git@gitlab.com:upstream/project.git",
+            },
+          ],
+        },
+      };
+
+      const mockApi = {
+        getRepository: sinon.stub().returns(mockRepo),
+        state: "initialized" as const,
+        onDidChangeState: sinon.stub(),
+      };
+
+      (gitService as any).api = mockApi;
+
+      const testUri = vscode.Uri.file("/test/file.ts");
+      const result = gitService.getRemoteUrl(testUri);
+
+      assert.strictEqual(result, undefined);
+    });
+  });
 });

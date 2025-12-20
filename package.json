@@ -120,12 +120,17 @@
   },
   "c8": {
     "include": [
-      "dist/**/*.js"
+      "out/src/**/*.js"
     ],
     "exclude": [
       "out/test/**",
       ".vscode-test/**",
-      "**/*.d.ts"
+      "**/*.d.ts",
+      "out/src/extension.js",
+      "out/src/types/**",
+      "out/src/interfaces/**",
+      "out/src/**/index.js",
+      "out/src/services/TokenService.js"
     ],
     "reporter": [
       "text",
