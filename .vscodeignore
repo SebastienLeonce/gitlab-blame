@@ -18,6 +18,14 @@ node_modules/**
 .vscode-test/**
 *.vsix
 
+# Test coverage
+coverage/**
+.nyc_output/**
+
+# Environment
+.env
+.env.local
+
 # Documentation (not needed in extension)
 ref/**
 CLAUDE.md
