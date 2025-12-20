@@ -182,3 +182,20 @@ src/
 - **Target**: CommonJS (required for VS Code extensions)
 - **External**: `vscode` module (provided by VS Code runtime)
 - **Output**: Single bundled file at `dist/extension.js`
+
+## Quality Assurance
+
+The project uses automated quality gates (git hooks, testing, coverage) to maintain code quality.
+
+**📖 For complete documentation**, see `ref/quality-assurance.md`:
+- Git hooks (pre-commit, pre-push)
+- Test philosophy and coverage requirements
+- Code quality standards
+- Commit message format
+- Development workflow
+
+**Quick Summary**:
+- 200+ unit tests (~350ms execution, 95%+ coverage)
+- Pre-commit: ESLint + TypeScript type check
+- Pre-push: Tests + coverage (90%/85% thresholds) + build
+- Tools: TypeScript (strict), ESLint, Mocha, Sinon, c8, Husky

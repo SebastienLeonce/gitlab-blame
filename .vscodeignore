@@ -32,6 +32,7 @@ CLAUDE.md
 
 # Git
 .git/**
+.husky/**
 .gitignore
 
 # Misc

@@ -1,0 +1,54 @@
+#!/usr/bin/env sh
+
+echo "🚀 Pre-push quality gate (this may take ~20-30 seconds)..."
+echo ""
+
+# Check for focused tests (.only) that should not be committed
+echo "🔍 Checking for focused tests (.only)..."
+if git grep -n "\.only(" -- '*.test.ts' ':(exclude)node_modules'; then
+  echo ""
+  echo "❌ Found .only() in tests. This prevents other tests from running."
+  echo "   Remove .only() before pushing."
+  echo "   Or use: git push --no-verify (not recommended)"
+  exit 1
+fi
+echo "✅ No focused tests found"
+echo ""
+
+# Check for .skip that might have been used to bypass failing tests
+echo "🔍 Checking for skipped tests (.skip)..."
+SKIP_COUNT=$(git grep -c "\.skip(" -- '*.test.ts' ':(exclude)node_modules' 2>/dev/null | awk -F: '{sum+=$2} END {print sum}' || echo "0")
+if [ "$SKIP_COUNT" -gt 0 ]; then
+  echo "⚠️  Warning: Found $SKIP_COUNT skipped test(s)."
+  echo "   Make sure this is intentional."
+  echo ""
+fi
+
+# Run full test suite with coverage
+echo "🧪 Running tests with coverage..."
+if ! npm run test:coverage; then
+  echo ""
+  echo "❌ Tests or coverage thresholds failed."
+  echo "   Fix failing tests or improve coverage."
+  echo "   Or use: git push --no-verify (not recommended)"
+  exit 1
+fi
+echo "✅ All tests passed with sufficient coverage"
+echo ""
+
+# Verify production build succeeds
+echo "🏗️  Building production bundle..."
+if ! npm run build; then
+  echo ""
+  echo "❌ Production build failed."
+  echo "   Fix build errors before pushing."
+  echo "   Or use: git push --no-verify (not recommended)"
+  exit 1
+fi
+echo "✅ Production build successful"
+echo ""
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ All pre-push checks passed! Safe to push."
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""

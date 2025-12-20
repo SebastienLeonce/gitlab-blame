@@ -3,7 +3,7 @@
   "displayName": "GitLab Blame MR Link",
   "description": "Show GitLab Merge Request links in git blame hovers",
   "version": "0.2.0",
-  "publisher": "SebastienLeonce",
+  "publisher": "sebastien-dev",
   "license": "MIT",
   "icon": "icon.png",
   "repository": {
@@ -84,14 +84,21 @@
     "lint": "eslint src --ext ts",
     "lint:fix": "eslint src --ext ts --fix",
     "typecheck": "tsc --noEmit",
+    "typecheck:watch": "tsc --noEmit --watch",
     "test": "node ./out/test/runTest.js",
+    "test:unit": "npm test",
     "test:coverage": "c8 npm test",
+    "test:watch": "npm test -- --watch",
     "pretest": "tsc -p ./tsconfig.test.json",
+    "validate": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
+    "pre-commit": "npm run lint && npm run typecheck",
+    "pre-push": "npm run test:coverage && npm run build",
     "version:patch": "npm version patch -m \"chore(release): bump to v%s\"",
     "version:minor": "npm version minor -m \"chore(release): bump to v%s\"",
     "version:major": "npm version major -m \"chore(release): bump to v%s\"",
     "package": "vsce package",
-    "publish": "vsce publish"
+    "publish": "vsce publish",
+    "prepare": "husky"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
@@ -106,6 +113,7 @@
     "esbuild": "^0.19.8",
     "eslint": "^8.55.0",
     "glob": "^10.3.10",
+    "husky": "^9.1.7",
     "mocha": "^10.2.0",
     "sinon": "^17.0.1",
     "typescript": "^5.3.2"
@@ -126,7 +134,11 @@
       "lcov"
     ],
     "all": true,
-    "check-coverage": false,
+    "check-coverage": true,
+    "lines": 90,
+    "functions": 90,
+    "branches": 85,
+    "statements": 90,
     "report-dir": "./coverage",
     "sourceMap": true,
     "skipFull": false

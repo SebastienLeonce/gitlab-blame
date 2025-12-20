@@ -1,18 +1,25 @@
-# GitLab Blame MR Link - Project Context
+# GitLab Blame MR Link - AI Context
 
-VS Code extension that adds GitLab Merge Request links to git blame hovers. Supports multi-provider architecture for future GitHub/Bitbucket support.
+VS Code extension that adds GitLab Merge Request links to git blame hovers. Multi-provider architecture for future GitHub/Bitbucket support.
+
+**🔍 For detailed documentation, see `ref/` folder** - this file is AI context only.
+
+---
 
 ## Quick Reference
 
-| Resource | Path |
-|----------|------|
-| Architecture | `ref/architecture.md` |
-| Services API | `ref/api/services.md` |
-| Providers API | `ref/api/providers.md` |
-| Utilities API | `ref/api/utilities.md` |
-| Configuration | `ref/configuration.md` |
-| Code Patterns | `ref/patterns.md` |
-| Multi-Provider Guide | `ref/multi-provider.md` |
+| Topic | Reference |
+|-------|-----------|
+| **Architecture** | `ref/architecture.md` - System design, data flow, components |
+| **Quality Assurance** | `ref/quality-assurance.md` - Git hooks, testing, coverage |
+| **Services API** | `ref/api/services.md` - Service interfaces and contracts |
+| **Providers API** | `ref/api/providers.md` - VCS provider interface |
+| **Utilities API** | `ref/api/utilities.md` - Helper functions |
+| **Configuration** | `ref/configuration.md` - Settings and commands |
+| **Code Patterns** | `ref/patterns.md` - Coding conventions |
+| **Multi-Provider** | `ref/multi-provider.md` - Provider implementation guide |
+
+---
 
 ## Project Structure
 
@@ -40,32 +47,111 @@ src/
 │   └── index.ts                     # Re-exports from interfaces
 └── utils/
     └── remoteParser.ts              # Git URL parser
+
+ref/                                 # Documentation (for humans)
+├── architecture.md                  # System architecture
+├── quality-assurance.md             # Git hooks, testing, quality standards
+├── configuration.md                 # Settings reference
+├── patterns.md                      # Code patterns
+├── multi-provider.md                # Provider guide
+└── api/
+    ├── services.md                  # Services API
+    ├── providers.md                 # Providers API
+    └── utilities.md                 # Utilities API
 ```
 
-## Commands
+---
+
+## Commands (npm scripts)
+
+### Essential Commands
 
 ```bash
-npm run build      # Production build (esbuild, minified)
-npm run watch      # Development watch mode
-npm run lint       # ESLint check
-npm run lint:fix   # Auto-fix lint issues
-npm run typecheck  # TypeScript type checking
-npm run pretest    # Compile tests
-npm test           # Run tests
+npm run build           # Production build (esbuild, minified)
+npm run watch           # Development watch mode
+npm test                # Run all tests
+npm run lint            # ESLint check
+npm run typecheck       # TypeScript type checking
+npm run validate        # Run all checks (lint + typecheck + coverage + build)
 ```
 
-## Key Files
+### Full Command List
 
-| File | Purpose |
-|------|---------|
-| `src/extension.ts` | Extension entry, command registration, error UI handling |
-| `src/providers/BlameHoverProvider.ts` | Hover tooltip logic, provider-agnostic |
-| `src/providers/vcs/GitLabProvider.ts` | GitLab API implementation |
-| `src/services/VcsProviderFactory.ts` | Provider registry and auto-detection |
-| `src/services/TokenService.ts` | Multi-provider token management |
-| `src/services/CacheService.ts` | SHA → MR cache |
-| `src/interfaces/IVcsProvider.ts` | Provider interface contract |
-| `package.json` | Extension manifest, settings schema |
+```bash
+# Build
+npm run build           # Production build (esbuild, minified)
+npm run watch           # Development watch mode
+
+# Linting
+npm run lint            # ESLint check
+npm run lint:fix        # Auto-fix lint issues
+
+# Type Checking
+npm run typecheck       # TypeScript type checking
+npm run typecheck:watch # TypeScript in watch mode
+
+# Testing
+npm test                # Run all tests
+npm run test:unit       # Alias for npm test
+npm run test:coverage   # Run tests with coverage report
+npm run test:watch      # Watch mode for TDD
+npm run pretest         # Compile tests only
+
+# Quality
+npm run validate        # All checks: lint + typecheck + coverage + build
+npm run pre-commit      # Manually run pre-commit checks
+npm run pre-push        # Manually run pre-push checks
+
+# Versioning
+npm run version:patch   # Bump patch version
+npm run version:minor   # Bump minor version
+npm run version:major   # Bump major version
+
+# Publishing
+npm run package         # Create .vsix package
+npm run publish         # Publish to marketplace
+```
+
+---
+
+## Git Hooks & Quality Gates
+
+**📖 Detailed documentation**: See `ref/quality-assurance.md`
+
+### Pre-Commit (~5-10s)
+- ✅ ESLint on staged files
+- ✅ TypeScript type check
+- 📝 Documentation sync reminder (non-blocking)
+
+### Pre-Push (~20-30s)
+- ✅ Full test suite (200+ tests)
+- ✅ Coverage threshold (90% lines, 85% branches)
+- ✅ Production build verification
+- ✅ No focused tests (`.only()`)
+
+**Bypass** (emergency only): `git commit --no-verify` or `git push --no-verify`
+
+---
+
+## Commit Message Format
+
+**Format**: `type(scope): description`
+
+**Types**: `feat` | `fix` | `docs` | `test` | `refactor` | `perf` | `chore` | `ci`
+
+**Scopes**: `providers` | `services` | `cache` | `ui` | `config` | `deps` | `hooks`
+
+**Examples**:
+```bash
+feat(providers): add GitHub provider support
+fix(cache): prevent race condition in TTL expiry
+docs(api): update IVcsProvider interface
+test(gitlab): add edge case for nested groups
+```
+
+**📖 Full specification**: See `ref/quality-assurance.md` §Commit Message Format
+
+---
 
 ## Configuration Settings
 
@@ -73,6 +159,10 @@ npm test           # Run tests
 |---------|---------|-------------|
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout (seconds) |
+
+**📖 Full reference**: See `ref/configuration.md`
+
+---
 
 ## Extension Commands
 
@@ -83,87 +173,65 @@ npm test           # Run tests
 | `gitlabBlame.clearCache` | Clear Cache |
 | `gitlabBlame.showStatus` | Show Status |
 
-## Dependencies
+---
 
-- **Runtime**: None (zero dependencies)
-- **Extension**: `vscode.git` (built-in)
-- **Dev**: TypeScript, ESLint, esbuild, Mocha, Sinon
+## Key AI Patterns & Conventions
 
-## API Endpoints Used
+### Provider Abstraction
+- `IVcsProvider` interface enables multi-provider support
+- Factory pattern: `VcsProviderFactory` auto-detects provider from remote URL
+- Providers return `VcsResult<T>` (data or error), never show UI directly
 
-```
-GET /api/v4/projects/:id/repository/commits/:sha/merge_requests
-Header: PRIVATE-TOKEN: <token>
-```
+### Services Return Data, Not UI
+- Services use `VcsResult` type with `shouldShowUI` flag
+- Extension's error handler decides when/how to show dialogs
+- Improves testability and separation of concerns
 
-## Testing
+### Token Management
+- Multi-provider support via `TokenService`
+- Stored in VS Code `SecretStorage` (encrypted)
+- Backwards compatible with existing GitLab token storage
 
-### Test Coverage
+### Cache Strategy
+- TTL-based cache (configurable, default 3600s)
+- Auto-invalidates on git operations (pull, fetch, checkout, commit)
+- Caches `null` to avoid repeated API calls for commits without MRs
 
-The extension has **200+ comprehensive unit tests** with excellent coverage:
+### Code Comments Philosophy
 
-| Test Suite | Tests | Coverage |
-|------------|-------|----------|
-| `blameHoverProvider.test.ts` | 60+ | Markdown escaping, date formatting, MR fetching, cache, errors |
-| `gitlabProvider.test.ts` | 40+ | Token mgmt, API calls, error handling, MR selection |
-| `gitService.test.ts` | 30+ | Blame parsing, edge cases, unicode handling |
-| `cacheService.test.ts` | 15+ | TTL, expiration, null caching, disabled mode |
-| `remoteParser.test.ts` | 15+ | SSH, HTTPS, nested groups, self-hosted |
-| `integration.test.ts` | 7 | Extension activation, commands, configuration |
+**Core Principle: Comment the "WHY", not the "WHAT"**
 
-**Total**: 200 tests, ~350ms execution time, 95%+ code coverage
+✅ **ALWAYS Comment**:
+- Interface JSDoc (all methods)
+- Public method JSDoc
+- "WHY" comments (reasoning, not actions)
+- Complex logic (regex, algorithms, edge cases)
 
-### Running Tests
+❌ **NEVER Comment**:
+- Redundant "WHAT" comments (code is self-explanatory)
+- Obvious operations
+- Self-documenting conditionals
 
-```bash
-npm test           # Run all tests
-npm run pretest    # Compile tests only
-```
+🔄 **Prefer Refactoring Over Comments**:
+- Extract well-named methods instead of explaining code
 
-### Test Philosophy
+**📖 Full guide**: See §Development Guidelines in this file (below)
 
-**Unit Tests Over E2E**: We rely on comprehensive unit tests rather than end-to-end tests because:
+---
 
-1. **Complete Logic Coverage** - Unit tests verify all business logic paths
-2. **Fast Execution** - 200 tests run in ~350ms
-3. **Deterministic** - No flaky tests due to timing or environment
-4. **Easy Debugging** - Failures pinpoint exact issue
-5. **VS Code Limitations** - E2E tests face extension initialization challenges
+## Documentation Sync Requirement
 
-**E2E Testing Limitation**: Attempted E2E tests encountered VS Code test harness limitations where extension services don't initialize properly in test environments. Since unit tests already cover all logic thoroughly, E2E tests provide minimal additional value.
+**Before committing code changes**:
 
-### Test Patterns
+- [ ] New/modified public methods → Update `ref/api/`
+- [ ] Architecture changes → Update `ref/architecture.md`
+- [ ] New patterns → Update `ref/patterns.md`
+- [ ] Configuration changes → Update `ref/configuration.md` and `CLAUDE.md`
+- [ ] Quality/testing changes → Update `ref/quality-assurance.md`
 
-- **Mocking**: Uses Sinon for stubbing services and external dependencies
-- **Isolation**: Each test has independent state (sandbox, fresh instances)
-- **Private Method Testing**: Uses TypeScript type casting to test private methods
-- **Time Control**: Uses Sinon fake timers for deterministic date/time testing
+Pre-commit hook will remind if `src/` changed but `ref/` didn't.
 
-## Important Patterns
-
-- **Provider abstraction**: `IVcsProvider` interface enables multi-provider support
-- **Services return data, not UI**: `VcsResult` type with `shouldShowUI` flag
-- **Factory pattern**: `VcsProviderFactory` auto-detects provider from remote URL
-- Uses VS Code Git API (`vscode.git`), not process spawning
-- Token stored in `SecretStorage` via `TokenService` (encrypted)
-- Cache auto-invalidates on git operations
-- MR selection: first merged by `merged_at` date
-- Shows token error once per session (deduplication via provider state)
-
-## Testing
-
-Run in VS Code:
-1. Press F5 to launch Extension Development Host
-2. Open a GitLab repository
-3. Hover over any line to see blame + MR link
-
-## Notes
-
-- Minimum VS Code: 1.84.0
-- Token scope needed: `read_api`
-- Supports nested GitLab groups
-- Works with self-hosted GitLab instances
-- Architecture ready for GitHub/Bitbucket providers
+---
 
 ## Development Guidelines
 
@@ -253,22 +321,27 @@ Extract to a well-named method:
 ✅ if (this.isExpired(entry)) {
 ```
 
-**Reference:** See `docs/comment-analysis.md` for detailed analysis of the codebase.
+---
+
+## Quick Facts
+
+- **Minimum VS Code**: 1.84.0
+- **GitLab Token Scope**: `read_api`
+- **Runtime Dependencies**: None (zero dependencies)
+- **Dev Dependencies**: TypeScript, ESLint, esbuild, Mocha, Sinon, Husky
+- **Extension API**: Uses `vscode.git` (built-in)
+- **Test Count**: 200+ tests, ~350ms execution
+- **Coverage**: 95%+ (enforced: 90% lines, 85% branches)
+- **GitLab API**: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
 
 ---
 
-### Documentation Sync Requirement
+## Notes for AI
 
-**Before committing any code changes**, ensure that:
-
-1. **`ref/` folder** is updated to reflect any API, architecture, or pattern changes
-2. **`CLAUDE.md`** is updated if project structure, commands, settings, or key patterns change
-
-This keeps documentation in sync with the codebase and ensures accurate context for future development.
-
-**Checklist before commit**:
-- [ ] New/modified public methods documented in `ref/api/`
-- [ ] Architecture changes reflected in `ref/architecture.md`
-- [ ] New patterns added to `ref/patterns.md`
-- [ ] Configuration changes updated in `ref/configuration.md` and `CLAUDE.md`
-- [ ] No redundant "WHAT" comments - only "WHY" comments
+- Always read `package.json` before running scripts (script names may vary)
+- Use `ref/` documentation for implementation details
+- Follow commit message format (enforced by hooks)
+- Update `ref/` docs when changing code
+- Run `npm run validate` before committing major changes
+- Supports nested GitLab groups and self-hosted instances
+- Architecture ready for GitHub/Bitbucket providers (see `ref/multi-provider.md`)
