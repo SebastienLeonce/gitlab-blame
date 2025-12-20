@@ -7,7 +7,7 @@ import * as vscode from "vscode";
  */
 suite("Extension Integration Tests", () => {
   test("Extension activates successfully", async () => {
-    const ext = vscode.extensions.getExtension("SebastienLeonce.gitlab-blame");
+    const ext = vscode.extensions.getExtension("sebastien-dev.gitlab-blame");
     assert.ok(ext, "Extension not found");
 
     await ext.activate();
@@ -53,7 +53,7 @@ suite("Extension Integration Tests", () => {
     // This test verifies that the hover provider is registered
     // We can't easily test the hover functionality without a real git repo
     // but we can verify the extension activated without errors
-    const ext = vscode.extensions.getExtension("SebastienLeonce.gitlab-blame");
+    const ext = vscode.extensions.getExtension("sebastien-dev.gitlab-blame");
     assert.ok(ext?.isActive, "Extension should be active");
   });
 
