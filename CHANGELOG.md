@@ -15,6 +15,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [0.2.2] - 2025-12-20
+
+### Fixed
+- Extension ID compatibility after publisher name change
+- CI coverage checks temporarily disabled to unblock releases
+
+### Changed
+- Improved release process documentation with manual tagging workflow
+
 ## [0.2.0] - 2025-12-20
 
 ### Added
