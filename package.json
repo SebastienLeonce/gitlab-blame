@@ -3,11 +3,11 @@
   "displayName": "GitLab Blame MR Link",
   "description": "Show GitLab Merge Request links in git blame hovers",
   "version": "0.1.0",
-  "publisher": "sleonce",
+  "publisher": "SebastienLeonce",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/sleonce/gitlab-blame"
+    "url": "https://github.com/SebastienLeonce/gitlab-blame"
   },
   "engines": {
     "vscode": "^1.84.0"
