@@ -2,9 +2,9 @@
 
 [![CI](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastienleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sebastienleonce/gitlab-blame)
-[![VS Code Marketplace](https://img.shields.io/vscode-marketplace/v/SebastienLeonce.gitlab-blame.svg?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=SebastienLeonce.gitlab-blame)
-[![Installs](https://img.shields.io/vscode-marketplace/i/SebastienLeonce.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=SebastienLeonce.gitlab-blame)
-[![Rating](https://img.shields.io/vscode-marketplace/r/SebastienLeonce.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=SebastienLeonce.gitlab-blame)
+[![VS Code Marketplace](https://img.shields.io/vscode-marketplace/v/sebastien-dev.gitlab-blame.svg?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
+[![Installs](https://img.shields.io/vscode-marketplace/i/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
+[![Rating](https://img.shields.io/vscode-marketplace/r/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 
 A lightweight VS Code extension that enhances git blame with GitLab Merge Request links. Hover over any line to see which MR introduced the change.
 
