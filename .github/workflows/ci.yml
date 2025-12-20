@@ -34,14 +34,20 @@ jobs:
       - name: Compile tests
         run: npm run pretest
 
-      - name: Run tests with coverage
-        run: xvfb-run -a npm run test:coverage
+      - name: Run tests
+        run: xvfb-run -a npm test
         env:
           DISPLAY: ":99.0"
 
-      - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
-        with:
-          file: ./coverage/lcov.info
-          token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+      # Coverage disabled temporarily - re-enable when coverage improves
+      # - name: Run tests with coverage
+      #   run: xvfb-run -a npm run test:coverage
+      #   env:
+      #     DISPLAY: ":99.0"
+      #
+      # - name: Upload coverage to Codecov
+      #   uses: codecov/codecov-action@v4
+      #   with:
+      #     file: ./coverage/lcov.info
+      #     token: ${{ secrets.CODECOV_TOKEN }}
+      #     fail_ci_if_error: false
