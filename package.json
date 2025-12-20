@@ -2,7 +2,7 @@
   "name": "gitlab-blame",
   "displayName": "GitLab Blame MR Link",
   "description": "Show GitLab Merge Request links in git blame hovers",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "publisher": "sebastien-dev",
   "license": "MIT",
   "icon": "icon.png",
