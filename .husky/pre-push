@@ -17,8 +17,8 @@ echo ""
 
 # Check for .skip that might have been used to bypass failing tests
 echo "🔍 Checking for skipped tests (.skip)..."
-SKIP_COUNT=$(git grep -c "\.skip(" -- '*.test.ts' ':(exclude)node_modules' 2>/dev/null | awk -F: '{sum+=$2} END {print sum}' || echo "0")
-if [ "$SKIP_COUNT" -gt 0 ]; then
+SKIP_COUNT=$(git grep -c "\.skip(" -- '*.test.ts' ':(exclude)node_modules' 2>/dev/null | awk -F: '{sum+=$2} END {print sum+0}' || echo "0")
+if [ -n "$SKIP_COUNT" ] && [ "$SKIP_COUNT" -gt 0 ]; then
   echo "⚠️  Warning: Found $SKIP_COUNT skipped test(s)."
   echo "   Make sure this is intentional."
   echo ""
