@@ -1,5 +1,8 @@
 # GitLab Blame MR Link
 
+[![CI](https://github.com/sleonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/sleonce/gitlab-blame/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/sleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sleonce/gitlab-blame)
+
 A lightweight VS Code extension that enhances git blame with GitLab Merge Request links. Hover over any line to see which MR introduced the change.
 
 ## Features
@@ -106,20 +109,180 @@ npm run lint:fix  # Auto-fix issues
 
 ## Architecture
 
+This extension uses a **multi-provider architecture** that supports multiple VCS platforms through an abstraction layer.
+
 ```
 src/
-├── extension.ts              # Entry point
-├── services/
-│   ├── GitService.ts         # VS Code Git API wrapper
-│   ├── GitLabService.ts      # GitLab API client
-│   └── CacheService.ts       # TTL cache with invalidation
+├── extension.ts                     # Entry point, command registration
+├── interfaces/
+│   ├── ICacheService.ts             # Cache service interface
+│   ├── IVcsProvider.ts              # VCS provider interface
+│   └── types.ts                     # Shared type definitions
 ├── providers/
-│   └── BlameHoverProvider.ts # Hover tooltip implementation
+│   ├── BlameHoverProvider.ts        # Hover provider (VCS-agnostic)
+│   └── vcs/
+│       └── GitLabProvider.ts        # GitLab VCS implementation
+├── services/
+│   ├── GitService.ts                # VS Code Git API wrapper
+│   ├── VcsProviderFactory.ts        # Provider registry & auto-detection
+│   ├── TokenService.ts              # Multi-provider token management
+│   └── CacheService.ts              # TTL cache with auto-invalidation
 ├── utils/
-│   └── remoteParser.ts       # Git remote URL parser
+│   └── remoteParser.ts              # Git remote URL parser
 └── types/
-    └── index.ts              # TypeScript interfaces
+    └── git.d.ts                     # VS Code Git extension types
 ```
+
+### Key Components
+
+- **VcsProviderFactory**: Auto-detects VCS provider from git remote URL
+- **IVcsProvider**: Interface enabling GitLab, GitHub, Bitbucket support
+- **TokenService**: Secure multi-provider token storage via VS Code SecretStorage
+- **CacheService**: TTL-based cache with automatic invalidation on git operations
+
+For detailed architecture documentation, see [`ref/architecture.md`](ref/architecture.md).
+
+## Troubleshooting
+
+### MR link not showing in hover
+
+**Possible causes:**
+
+1. **No Personal Access Token configured**
+   - Run: `GitLab Blame: Set Personal Access Token`
+   - Ensure token has `read_api` scope
+
+2. **Commit not associated with any MR**
+   - Some commits may not be part of a merge request
+   - Direct commits to main branch won't have MR links
+
+3. **Cache contains stale data**
+   - Run: `GitLab Blame: Clear Cache`
+   - Cache auto-invalidates on git operations
+
+4. **Remote URL not recognized**
+   - Check that your git remote uses GitLab
+   - Supported formats: SSH (`git@gitlab.com:group/project.git`) or HTTPS (`https://gitlab.com/group/project.git`)
+   - Run `git remote -v` to verify
+
+### Authentication errors
+
+**Error: "Token not found" or "Authentication failed"**
+
+1. Verify token is set: Run `GitLab Blame: Show Status`
+2. Check token scope includes `read_api`
+3. For self-hosted GitLab, verify `gitlabBlame.gitlabUrl` setting matches your instance
+
+### Performance issues
+
+**Hovers are slow to appear**
+
+1. Increase cache TTL: Set `gitlabBlame.cacheTTL` to a higher value (e.g., `7200` for 2 hours)
+2. Check network latency to your GitLab instance
+3. Consider using a local cache proxy if on a slow network
+
+## FAQ
+
+### Does this work with GitHub or Bitbucket?
+
+Not yet. The extension currently supports GitLab only, but the architecture is designed to support multiple VCS providers. GitHub and Bitbucket support is planned for future releases.
+
+### Do I need a Personal Access Token?
+
+Yes. The extension requires a GitLab Personal Access Token with `read_api` scope to fetch merge request information via the GitLab API.
+
+### Does this work with self-hosted GitLab instances?
+
+Yes! Configure your GitLab instance URL in settings:
+
+```json
+{
+  "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com"
+}
+```
+
+### Will this slow down my editor?
+
+No. The extension:
+- Uses efficient TTL-based caching to minimize API calls
+- Only makes API calls when you hover over a line
+- Supports cancellation if you move away before the request completes
+- Has zero runtime dependencies (small bundle size)
+
+### Can I use this in private/nested repositories?
+
+Yes. The extension supports:
+- Private repositories (with proper token permissions)
+- Nested GitLab groups (e.g., `group/subgroup/project`)
+- Both SSH and HTTPS remote URLs
+
+### How do I check if the extension is working?
+
+Run the command: `GitLab Blame: Show Status`
+
+This displays:
+- Current configuration (GitLab URL, cache TTL)
+- Token status (configured or missing)
+- Cache statistics
+
+## Contributing
+
+Contributions are welcome! Here's how to get started:
+
+### Development Setup
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/sleonce/gitlab-blame.git
+   cd gitlab-blame
+   ```
+
+2. **Install dependencies**
+   ```bash
+   npm install
+   ```
+
+3. **Build and test**
+   ```bash
+   npm run watch      # Start watch mode
+   # Press F5 in VS Code to launch Extension Development Host
+   ```
+
+### Running Tests
+
+```bash
+npm run pretest    # Compile tests
+npm test           # Run test suite
+npm run test:coverage  # Generate coverage report
+```
+
+### Code Quality
+
+Before submitting a PR:
+
+```bash
+npm run typecheck  # TypeScript type checking
+npm run lint       # Check for lint issues
+npm run lint:fix   # Auto-fix lint issues
+npm run build      # Verify production build works
+```
+
+### Pull Request Guidelines
+
+1. **Create a feature branch** from `main`
+2. **Write tests** for new functionality
+3. **Update documentation** if adding features or changing behavior
+4. **Ensure all tests pass** and lint checks succeed
+5. **Keep commits focused** - one logical change per commit
+
+### Documentation
+
+When making significant changes, update:
+- `README.md` - User-facing documentation
+- `ref/` folder - Architecture, API, and pattern documentation
+- `CLAUDE.md` - Project context for development
+
+See [`ref/`](ref/) for detailed API and architecture documentation.
 
 ## License
 
