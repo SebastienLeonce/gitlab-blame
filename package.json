@@ -59,7 +59,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run build",
-    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify",
+    "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap",
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "lint": "eslint src --ext ts",
     "lint:fix": "eslint src --ext ts --fix",
@@ -87,11 +87,10 @@
   },
   "c8": {
     "include": [
-      "out/src/**/*.js"
+      "dist/**/*.js"
     ],
     "exclude": [
       "out/test/**",
-      "out/src/types/**",
       ".vscode-test/**",
       "**/*.d.ts"
     ],
