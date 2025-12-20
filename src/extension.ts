@@ -28,7 +28,6 @@ const state: ExtensionState = {};
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
-  // Initialize GitService
   state.gitService = new GitService();
   const gitInitialized = await state.gitService.initialize();
 
@@ -39,14 +38,11 @@ export async function activate(
     );
   }
 
-  // Initialize TokenService
   state.tokenService = new TokenService(context.secrets);
   await state.tokenService.loadTokens();
 
-  // Initialize VcsProviderFactory
   state.vcsProviderFactory = new VcsProviderFactory();
 
-  // Register GitLab provider
   const config = vscode.workspace.getConfiguration();
   const gitlabUrl = config.get<string>(
     CONFIG_KEYS.GITLAB_URL,
@@ -57,11 +53,9 @@ export async function activate(
   gitlabProvider.setToken(gitlabToken);
   state.vcsProviderFactory.registerProvider(gitlabProvider);
 
-  // Initialize CacheService with Git API for watching repo changes
   state.cacheService = new CacheService();
   state.cacheService.initialize(state.gitService.getAPI());
 
-  // Register BlameHoverProvider with error callback
   const hoverProvider = new BlameHoverProvider(
     state.gitService,
     state.vcsProviderFactory,
@@ -91,7 +85,6 @@ export async function activate(
     }),
   );
 
-  // Listen for configuration changes
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (e.affectsConfiguration(CONFIG_KEYS.GITLAB_URL)) {
@@ -110,7 +103,6 @@ export async function activate(
     }),
   );
 
-  // Register commands
   registerCommands(context);
 }
 
@@ -119,13 +111,11 @@ export async function activate(
  * This is the central error handler called by BlameHoverProvider
  */
 function handleVcsError(error: VcsError, provider: IVcsProvider): void {
-  // Only show UI if flagged
   if (!error.shouldShowUI) {
     console.warn(`${provider.name} error (${error.type}):`, error.message);
     return;
   }
 
-  // Show appropriate UI based on error type
   switch (error.type) {
     case VcsErrorType.NoToken:
       void vscode.window
@@ -174,7 +164,6 @@ function handleVcsError(error: VcsError, provider: IVcsProvider): void {
  * Register all extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
-  // Command: Set Personal Access Token
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.SET_TOKEN, async () => {
       const token = await vscode.window.showInputBox({
@@ -200,7 +189,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // Command: Clear Cache
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.CLEAR_CACHE, () => {
       const size = state.cacheService?.size ?? 0;
@@ -211,7 +199,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // Command: Delete Token
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.DELETE_TOKEN, async () => {
       const provider = state.vcsProviderFactory?.getProvider(
@@ -242,7 +229,6 @@ function registerCommands(context: vscode.ExtensionContext): void {
     }),
   );
 
-  // Command: Show Status
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, async () => {
       const config = vscode.workspace.getConfiguration();

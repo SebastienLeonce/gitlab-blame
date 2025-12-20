@@ -47,7 +47,6 @@ export function parseGitLabRemote(remoteUrl: string): GitLabRemoteInfo | null {
       return null;
     }
 
-    // Remove leading slash and .git suffix
     const projectPath = url.pathname.slice(1).replace(/\.git$/, "");
     if (!projectPath) {
       return null;

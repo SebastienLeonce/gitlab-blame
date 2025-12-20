@@ -30,7 +30,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     position: vscode.Position,
     token: vscode.CancellationToken,
   ): Promise<vscode.Hover | null> {
-    // Get blame info for the current line
     const blameInfo = await this.gitService.getBlameForLine(
       document.uri,
       position.line,
@@ -41,12 +40,10 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       return null;
     }
 
-    // Check if request was cancelled
     if (token.isCancellationRequested) {
       return null;
     }
 
-    // Build the hover content
     const content = await this.buildHoverContent(
       document.uri,
       blameInfo,
@@ -72,10 +69,8 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     md.isTrusted = true;
     md.supportHtml = true;
 
-    // Try to get MR info (from cache or API)
     const mrResult = await this.getMergeRequestInfo(uri, blameInfo.sha, token);
 
-    // Add MR info if available
     if (mrResult.mr) {
       const mrLink = this.formatMrLink(mrResult.mr);
       md.appendMarkdown(`**Merge Request**: ${mrLink}\n\n`);
@@ -83,19 +78,16 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       md.appendMarkdown(`*Loading merge request...*\n\n`);
     }
 
-    // Add commit info
     const shortSha = blameInfo.sha.substring(0, 7);
     const dateStr = this.formatRelativeDate(blameInfo.date);
     md.appendMarkdown(
       `\`${shortSha}\` by ${this.escapeMarkdown(blameInfo.author)} • ${dateStr}`,
     );
 
-    // Add commit message if available
     if (blameInfo.summary) {
       md.appendMarkdown(`\n\n*${this.escapeMarkdown(blameInfo.summary)}*`);
     }
 
-    // Add "no MR" message if we checked and found nothing
     if (!mrResult.mr && !mrResult.loading && mrResult.checked) {
       md.appendMarkdown(`\n\n*No associated merge request*`);
     }
@@ -111,21 +103,17 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     sha: string,
     token: vscode.CancellationToken,
   ): Promise<{ mr: MergeRequest | null; loading: boolean; checked: boolean }> {
-    // Check cache first
     const cached = this.cacheService.get(sha);
     if (cached !== undefined) {
       // Cache hit (could be MR or null for "no MR")
       return { mr: cached, loading: false, checked: true };
     }
 
-    // Check if we have a pending request for this SHA
     const pendingKey = sha;
     if (this.pendingRequests.has(pendingKey)) {
-      // Return loading state - another hover triggered the request
       return { mr: null, loading: true, checked: false };
     }
 
-    // Get remote URL and detect provider
     const remoteUrl = this.gitService.getRemoteUrl(uri);
     if (!remoteUrl) {
       return { mr: null, loading: false, checked: false };
@@ -136,7 +124,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       return { mr: null, loading: false, checked: false };
     }
 
-    // Check if provider has a token configured
     if (!provider.hasToken()) {
       return { mr: null, loading: false, checked: false };
     }
@@ -146,7 +133,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       return { mr: null, loading: false, checked: false };
     }
 
-    // Start API request
     const requestPromise = this.fetchAndCacheMR(
       provider,
       remoteInfo.projectPath,
@@ -156,7 +142,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     this.pendingRequests.set(pendingKey, requestPromise);
 
     try {
-      // Wait for the request with cancellation support
       const mr = await Promise.race([
         requestPromise,
         new Promise<null>((resolve) => {
@@ -189,7 +174,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       host,
     );
 
-    // Handle errors - delegate to extension for UI
     if (!result.success && result.error) {
       if (this.onVcsError) {
         this.onVcsError(result.error, provider);
@@ -262,7 +246,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
 
     // Truncate title only, preserving full MR number
     const availableForTitle =
-      BlameHoverProvider.MR_TITLE_MAX_LENGTH - prefix.length - 3; // 3 for "..."
+      BlameHoverProvider.MR_TITLE_MAX_LENGTH - prefix.length - 3;
     const truncatedTitle =
       mr.title.substring(0, Math.max(0, availableForTitle)) + "...";
     const truncatedText = prefix + truncatedTitle;

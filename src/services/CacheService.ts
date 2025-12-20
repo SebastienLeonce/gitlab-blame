@@ -41,14 +41,12 @@ export class CacheService implements ICacheService {
       this.watchRepository(repo);
     }
 
-    // Watch for new repositories being opened
     this.disposables.push(
       gitApi.onDidOpenRepository((repo) => {
         this.watchRepository(repo);
       }),
     );
 
-    // Listen for configuration changes
     this.disposables.push(
       vscode.workspace.onDidChangeConfiguration((e) => {
         if (e.affectsConfiguration(CONFIG_KEYS.CACHE_TTL)) {
@@ -85,16 +83,15 @@ export class CacheService implements ICacheService {
     const entry = this.cache.get(sha);
 
     if (!entry) {
-      return undefined; // Not in cache
+      return undefined;
     }
 
-    // Check if entry has expired
     if (Date.now() > entry.expiresAt) {
       this.cache.delete(sha);
-      return undefined; // Expired
+      return undefined;
     }
 
-    return entry.value; // Could be MergeRequest or null (no MR found)
+    return entry.value;
   }
 
   /**

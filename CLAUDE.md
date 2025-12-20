@@ -124,6 +124,96 @@ Run in VS Code:
 
 ## Development Guidelines
 
+### Code Comments Philosophy
+
+**Core Principle: Comment the "WHY", not the "WHAT"**
+
+Code should be self-documenting through clear naming and structure. Comments should explain intent, reasoning, or non-obvious behavior - not repeat what the code already says.
+
+#### ✅ **ALWAYS Comment**
+
+1. **Interface JSDoc** - All interface methods need JSDoc documentation
+   ```typescript
+   /**
+    * Get a cached MR for a commit SHA
+    * @param sha The commit SHA
+    * @returns The cached MR, null if cached as "no MR", or undefined if not in cache
+    */
+   get(sha: string): MergeRequest | null | undefined;
+   ```
+
+2. **Public Method JSDoc** - Document the API for other developers
+   ```typescript
+   /**
+    * Parse git blame output into a map of line numbers to BlameInfo
+    * VS Code Git API returns standard blame format: <sha> (<author> <date>...)
+    */
+   private parseBlameOutput(output: string): Map<number, BlameInfo>
+   ```
+
+3. **"WHY" Comments** - Explain reasoning, not actions
+   ```typescript
+   ✅ // Service instances (encapsulated in object to avoid global mutation)
+   ✅ // Get TTL from configuration (in seconds), convert to milliseconds
+   ✅ // Don't cache if TTL is 0 (caching disabled)
+   ✅ // Check for uncommitted changes (all zeros SHA or very short SHA)
+   ```
+
+4. **Complex Logic** - Clarify regex, algorithms, edge cases
+   ```typescript
+   ✅ // Standard blame format regex: ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
+   ✅ // SSH format: git@gitlab.example.com:group/subgroup/project.git
+   ```
+
+#### ❌ **NEVER Comment**
+
+1. **Redundant "WHAT" Comments** - Code is self-explanatory
+   ```typescript
+   ❌ // Initialize GitService
+   state.gitService = new GitService();
+
+   ❌ // Check if request was cancelled
+   if (token.isCancellationRequested) {
+
+   ❌ // Get blame info for the current line
+   const blameInfo = await this.gitService.getBlameForLine(uri, position.line);
+   ```
+
+2. **Obvious Operations**
+   ```typescript
+   ❌ // Parse the date and time
+   const dateTime = new Date(`${date}T${time}`);
+
+   ❌ // Check cache first
+   const cached = this.cacheService.get(sha);
+   ```
+
+3. **Self-Documenting Conditionals**
+   ```typescript
+   ❌ // Only show UI if flagged
+   if (!error.shouldShowUI) {
+
+   ❌ // Show appropriate UI based on error type
+   switch (error.type) {
+   ```
+
+#### 🔄 **Prefer Refactoring Over Comments**
+
+Instead of:
+```typescript
+❌ // Check if entry has expired
+if (Date.now() > entry.expiresAt) {
+```
+
+Extract to a well-named method:
+```typescript
+✅ if (this.isExpired(entry)) {
+```
+
+**Reference:** See `docs/comment-analysis.md` for detailed analysis of the codebase.
+
+---
+
 ### Documentation Sync Requirement
 
 **Before committing any code changes**, ensure that:
@@ -138,3 +228,4 @@ This keeps documentation in sync with the codebase and ensures accurate context 
 - [ ] Architecture changes reflected in `ref/architecture.md`
 - [ ] New patterns added to `ref/patterns.md`
 - [ ] Configuration changes updated in `ref/configuration.md` and `CLAUDE.md`
+- [ ] No redundant "WHAT" comments - only "WHY" comments

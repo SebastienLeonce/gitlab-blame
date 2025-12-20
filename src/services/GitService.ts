@@ -38,7 +38,6 @@ export class GitService {
       this.api = git.getAPI(1);
 
       if (this.api.state !== "initialized") {
-        // Wait for Git to initialize
         await new Promise<void>((resolve) => {
           const disposable = this.api!.onDidChangeState((state) => {
             if (state === "initialized") {
@@ -186,7 +185,6 @@ export class GitService {
       const isUncommitted = /^0+$/.test(sha);
 
       if (!isUncommitted && sha && author && lineNum) {
-        // Parse the date and time
         const dateTime = new Date(`${date}T${time}`);
 
         result.set(lineNum, {
