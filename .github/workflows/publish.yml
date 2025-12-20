@@ -1,0 +1,126 @@
+name: Publish Extension
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'  # Trigger on version tags (v1.0.0, v0.2.1, etc.)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # For creating GitHub releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for changelog generation
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Extract version from tag (v1.2.3 → 1.2.3)
+      - name: Extract version from tag
+        id: get_version
+        run: echo "VERSION=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      # Read version from package.json
+      - name: Get package.json version
+        id: package_version
+        run: echo "VERSION=$(node -p "require('./package.json').version")" >> $GITHUB_OUTPUT
+
+      # Verify versions match (fail if mismatch)
+      - name: Verify version match
+        run: |
+          if [ "${{ steps.get_version.outputs.VERSION }}" != "${{ steps.package_version.outputs.VERSION }}" ]; then
+            echo "❌ Version mismatch!"
+            echo "Git tag version: ${{ steps.get_version.outputs.VERSION }}"
+            echo "package.json version: ${{ steps.package_version.outputs.VERSION }}"
+            echo ""
+            echo "Please ensure package.json version matches the git tag."
+            exit 1
+          fi
+          echo "✅ Versions match: ${{ steps.get_version.outputs.VERSION }}"
+
+      # Run quality checks
+      - name: Run typecheck
+        run: npm run typecheck
+
+      - name: Run lint
+        run: npm run lint
+
+      - name: Build extension
+        run: npm run build
+
+      - name: Run tests
+        run: |
+          npm run pretest
+          xvfb-run -a npm test
+        env:
+          DISPLAY: ':99.0'
+
+      # Package extension (.vsix file)
+      - name: Package extension
+        run: npx vsce package
+
+      # Publish to VS Code Marketplace
+      - name: Publish to VS Code Marketplace
+        run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+
+      # Generate changelog for this release
+      - name: Generate changelog
+        id: changelog
+        run: |
+          # Get previous tag
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+
+          if [ -z "$PREV_TAG" ]; then
+            # First release - get all commits
+            CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
+          else
+            # Get commits since previous tag
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+          fi
+
+          # Save to file (escape for GitHub Actions)
+          echo "$CHANGELOG" > /tmp/changelog.txt
+          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
+          cat /tmp/changelog.txt >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      # Create GitHub Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ steps.get_version.outputs.VERSION }}
+          body: |
+            ## What's Changed
+
+            ${{ steps.changelog.outputs.CHANGELOG }}
+
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
+          files: |
+            *.vsix
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Optional: Upload .vsix as artifact
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-vsix
+          path: '*.vsix'
+          retention-days: 90

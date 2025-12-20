@@ -12,9 +12,28 @@
   "engines": {
     "vscode": "^1.84.0"
   },
+  "keywords": [
+    "gitlab",
+    "git",
+    "blame",
+    "merge request",
+    "vcs",
+    "hover",
+    "scm"
+  ],
   "categories": [
+    "SCM Providers",
     "Other"
   ],
+  "galleryBanner": {
+    "color": "#FC6D26",
+    "theme": "dark"
+  },
+  "qna": "marketplace",
+  "bugs": {
+    "url": "https://github.com/SebastienLeonce/gitlab-blame/issues"
+  },
+  "homepage": "https://github.com/SebastienLeonce/gitlab-blame#readme",
   "activationEvents": [
     "onStartupFinished"
   ],
@@ -66,7 +85,12 @@
     "typecheck": "tsc --noEmit",
     "test": "node ./out/test/runTest.js",
     "test:coverage": "c8 npm test",
-    "pretest": "tsc -p ./tsconfig.test.json"
+    "pretest": "tsc -p ./tsconfig.test.json",
+    "version:patch": "npm version patch -m \"chore(release): bump to v%s\"",
+    "version:minor": "npm version minor -m \"chore(release): bump to v%s\"",
+    "version:major": "npm version major -m \"chore(release): bump to v%s\"",
+    "package": "vsce package",
+    "publish": "vsce publish"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.6",
