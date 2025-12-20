@@ -1,7 +1,7 @@
 # GitLab Blame MR Link
 
 [![CI](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/SebastienLeonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/SebastienLeonce/gitlab-blame)
+[![codecov](https://codecov.io/gh/sebastienleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sebastienleonce/gitlab-blame)
 
 A lightweight VS Code extension that enhances git blame with GitLab Merge Request links. Hover over any line to see which MR introduced the change.
 
