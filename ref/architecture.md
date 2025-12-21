@@ -18,15 +18,17 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 │      │(services/) │ │(services/) │ │    (services/)      │         │
 │      └──────┬─────┘ └──────┬─────┘ └──────┬──────────────┘         │
 │             │              │              │                          │
-│      ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼──────────────┐         │
-│      │ vscode.git │ │  In-Memory │ │   GitLabProvider    │         │
-│      │ Extension  │ │   Cache    │ │  (providers/vcs/)   │         │
-│      └────────────┘ └────────────┘ └──────┬──────────────┘         │
-│                                           │                          │
-│                                    ┌──────▼──────────────┐         │
-│                                    │    GitLab API       │         │
-│                                    │     (fetch)         │         │
-│                                    └─────────────────────┘         │
+│             │              │         ┌────▼────┐  ┌────────┐        │
+│      ┌──────▼─────┐ ┌──────▼─────┐  │ GitLab  │  │ GitHub │        │
+│      │ vscode.git │ │  In-Memory │  │Provider │  │Provider│        │
+│      │ Extension  │ │   Cache    │  │ (vcs/)  │  │ (vcs/) │        │
+│      └────────────┘ └────────────┘  └────┬────┘  └───┬────┘        │
+│                                          │           │               │
+│                                    ┌─────▼────┐ ┌────▼─────┐        │
+│                                    │ GitLab   │ │ GitHub   │        │
+│                                    │   API    │ │   API    │        │
+│                                    │ (fetch)  │ │ (fetch)  │        │
+│                                    └──────────┘ └──────────┘        │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -66,13 +68,14 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 - Registry for VCS provider implementations
 - Auto-detects provider from git remote URL
 - Returns appropriate provider for making API calls
-- Supports multiple providers (GitLab, future: GitHub, Bitbucket)
+- Supports multiple providers (GitLab, GitHub, future: Bitbucket)
 
 ### TokenService (`src/services/TokenService.ts`)
 
 - Manages authentication tokens for multiple VCS providers
 - Uses VS Code's `SecretStorage` for secure storage
 - Loads/saves tokens per provider ID
+- Supports GitLab and GitHub tokens
 - Backwards compatible with existing GitLab token storage
 
 ### GitLabProvider (`src/providers/vcs/GitLabProvider.ts`)
@@ -83,11 +86,27 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 - Returns `VcsResult` with data or error (no direct UI)
 - Handles API errors (401, 403, 404, 429)
 - Selects appropriate MR when multiple exist (first merged by date)
+- Supports self-hosted GitLab instances via `gitlabBlame.gitlabUrl` setting
+
+### GitHubProvider (`src/providers/vcs/GitHubProvider.ts`)
+
+- Implements `IVcsProvider` interface for GitHub
+- Calls GitHub REST API v3 to fetch PRs associated with commits
+- Uses `Authorization: token <pat>` header for authentication
+- Requires `Accept: application/vnd.github.v3+json` header
+- Returns `VcsResult` with data or error (no direct UI)
+- Handles API errors (401, 403, 404, 429)
+- Selects appropriate PR when multiple exist (first merged by date)
+- Supports GitHub.com and GitHub Enterprise Server
+- Enterprise detection via hostname matching or config-based detection
+- Configurable via `gitlabBlame.githubUrl` setting
 
 ### CacheService (`src/services/CacheService.ts`)
 
 - Implements `ICacheService` interface
-- Caches commit SHA → MergeRequest mappings
+- Caches commit SHA → MergeRequest mappings with provider isolation
+- **Cache key format**: `{providerId}:{sha}` (e.g., `gitlab:abc123`, `github:abc123`)
+- Prevents collisions when same SHA exists in both GitLab and GitHub repos
 - TTL-based expiration (configurable, default 3600s)
 - Automatic invalidation on git operations (pull, fetch, checkout, commit)
 - Watches repository state changes via Git API
@@ -95,24 +114,29 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 
 ### Remote URL Parser (`src/utils/remoteParser.ts`)
 
-- Extracts GitLab host and project path from git remote URLs
-- Supports SSH format: `git@gitlab.com:group/project.git`
-- Supports HTTPS format: `https://gitlab.com/group/project.git`
-- Handles nested groups: `group/subgroup/project`
+- Extracts VCS host and project path from git remote URLs
+- **GitLab Support**:
+  - SSH format: `git@gitlab.com:group/project.git`
+  - HTTPS format: `https://gitlab.com/group/project.git`
+  - Handles nested groups: `group/subgroup/project`
+- **GitHub Support**:
+  - SSH format: `git@github.com:owner/repo.git`
+  - HTTPS format: `https://github.com/owner/repo.git`
+  - GitHub Enterprise: Custom domain support
 
 ## Data Flow
 
 1. **User hovers over a line**
 2. **BlameHoverProvider.provideHover()** called by VS Code
 3. **GitService.getBlameForLine()** fetches blame via vscode.git API
-4. **CacheService.get()** checks for cached MR
+4. **CacheService.get(providerId, sha)** checks for cached MR using provider-specific key
 5. If not cached:
    - Get git remote URL from GitService
-   - **VcsProviderFactory.detectProvider()** finds matching provider
+   - **VcsProviderFactory.detectProvider()** finds matching provider (GitLab or GitHub)
    - **Provider.getMergeRequestForCommit()** calls VCS API
    - On error, **VcsErrorHandler** callback shows UI
-   - Result cached with TTL
-6. **Hover markdown** returned with MR link, commit SHA, author, date, message
+   - Result cached with TTL using key format `{providerId}:{sha}`
+6. **Hover markdown** returned with MR/PR link, commit SHA, author, date, message
 
 ## Key Design Decisions
 
@@ -132,9 +156,11 @@ The extension uses only VS Code APIs and native fetch. This keeps the bundle sma
 
 Uses VS Code's Git extension API (`vscode.git`) instead of spawning `git` processes. This is more secure, faster, and provides typed interfaces.
 
-### TTL Cache with Auto-Invalidation
+### TTL Cache with Auto-Invalidation and Provider Isolation
 
 The cache invalidates automatically on repository state changes (detected via vscode.git events). This ensures data freshness after git operations without manual intervention.
+
+Cache keys include provider ID (`{providerId}:{sha}`) to prevent collisions when the same commit SHA exists in both GitLab and GitHub repositories (e.g., mirrored repos).
 
 ### MR Selection Strategy
 
@@ -162,6 +188,7 @@ src/
 ├── providers/
 │   ├── BlameHoverProvider.ts        # Hover provider implementation
 │   └── vcs/
+│       ├── GitHubProvider.ts        # GitHub VCS provider
 │       └── GitLabProvider.ts        # GitLab VCS provider
 ├── services/
 │   ├── CacheService.ts              # TTL cache with auto-invalidation
@@ -173,7 +200,7 @@ src/
 │   ├── git.d.ts                     # VS Code Git extension types
 │   └── index.ts                     # Re-exports from interfaces
 └── utils/
-    └── remoteParser.ts              # Git remote URL parser
+    └── remoteParser.ts              # Git remote URL parser (GitLab + GitHub)
 ```
 
 ## Build Configuration

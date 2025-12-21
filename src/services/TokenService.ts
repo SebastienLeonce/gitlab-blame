@@ -18,9 +18,9 @@ export class TokenService {
     const gitlabToken = await this.secretStorage.get(SECRET_KEYS.GITLAB_TOKEN);
     this.tokens.set(VCS_PROVIDERS.GITLAB, gitlabToken);
 
-    // Future: load tokens for other providers
-    // const githubToken = await this.secretStorage.get(SECRET_KEYS.GITHUB_TOKEN);
-    // this.tokens.set(VCS_PROVIDERS.GITHUB, githubToken);
+    // Load GitHub token
+    const githubToken = await this.secretStorage.get(SECRET_KEYS.GITHUB_TOKEN);
+    this.tokens.set(VCS_PROVIDERS.GITHUB, githubToken);
   }
 
   /**
@@ -70,7 +70,8 @@ export class TokenService {
     switch (providerId) {
       case VCS_PROVIDERS.GITLAB:
         return SECRET_KEYS.GITLAB_TOKEN;
-      // Future: add cases for GitHub, Bitbucket
+      case VCS_PROVIDERS.GITHUB:
+        return SECRET_KEYS.GITHUB_TOKEN;
       default:
         return undefined;
     }

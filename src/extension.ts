@@ -4,6 +4,7 @@ import { CacheService } from "./services/CacheService";
 import { TokenService } from "./services/TokenService";
 import { VcsProviderFactory } from "./services/VcsProviderFactory";
 import { GitLabProvider } from "./providers/vcs/GitLabProvider";
+import { GitHubProvider } from "./providers/vcs/GitHubProvider";
 import { BlameHoverProvider } from "./providers/BlameHoverProvider";
 import { IVcsProvider } from "./interfaces/IVcsProvider";
 import { VcsError, VcsErrorType } from "./interfaces/types";
@@ -14,6 +15,9 @@ import {
   DEFAULTS,
   VCS_PROVIDERS,
 } from "./constants";
+
+// Extension-wide output channel for error logging
+let outputChannel: vscode.OutputChannel;
 
 // Service instances (encapsulated in object to avoid global mutation)
 interface ExtensionState {
@@ -28,11 +32,16 @@ const state: ExtensionState = {};
 export async function activate(
   context: vscode.ExtensionContext,
 ): Promise<void> {
+  // Create output channel for error logging
+  outputChannel = vscode.window.createOutputChannel("GitLab Blame");
+  context.subscriptions.push(outputChannel);
+
   state.gitService = new GitService();
   const gitInitialized = await state.gitService.initialize();
 
   if (!gitInitialized) {
     const error = state.gitService.getInitializationError();
+    outputChannel.appendLine(`ERROR: Failed to initialize Git - ${error}`);
     void vscode.window.showErrorMessage(
       `GitLab Blame: Failed to initialize Git - ${error}`,
     );
@@ -52,6 +61,15 @@ export async function activate(
   const gitlabToken = state.tokenService.getToken(VCS_PROVIDERS.GITLAB);
   gitlabProvider.setToken(gitlabToken);
   state.vcsProviderFactory.registerProvider(gitlabProvider);
+
+  const githubUrl = config.get<string>(
+    CONFIG_KEYS.GITHUB_URL,
+    DEFAULTS.GITHUB_URL,
+  );
+  const githubProvider = new GitHubProvider(githubUrl);
+  const githubToken = state.tokenService.getToken(VCS_PROVIDERS.GITHUB);
+  githubProvider.setToken(githubToken);
+  state.vcsProviderFactory.registerProvider(githubProvider);
 
   state.cacheService = new CacheService();
   state.cacheService.initialize(state.gitService.getAPI());
@@ -82,6 +100,20 @@ export async function activate(
           provider.resetErrorState();
         }
       }
+
+      if (e.key === SECRET_KEYS.GITHUB_TOKEN) {
+        const token = await context.secrets.get(SECRET_KEYS.GITHUB_TOKEN);
+        if (state.tokenService && token) {
+          await state.tokenService.setToken(VCS_PROVIDERS.GITHUB, token);
+        }
+        const provider = state.vcsProviderFactory?.getProvider(
+          VCS_PROVIDERS.GITHUB,
+        );
+        if (provider) {
+          provider.setToken(token);
+          provider.resetErrorState();
+        }
+      }
     }),
   );
 
@@ -100,6 +132,20 @@ export async function activate(
           provider.setHostUrl(newUrl);
         }
       }
+
+      if (e.affectsConfiguration(CONFIG_KEYS.GITHUB_URL)) {
+        const config = vscode.workspace.getConfiguration();
+        const newUrl = config.get<string>(
+          CONFIG_KEYS.GITHUB_URL,
+          DEFAULTS.GITHUB_URL,
+        );
+        const provider = state.vcsProviderFactory?.getProvider(
+          VCS_PROVIDERS.GITHUB,
+        );
+        if (provider) {
+          provider.setHostUrl(newUrl);
+        }
+      }
     }),
   );
 
@@ -111,10 +157,15 @@ export async function activate(
  * This is the central error handler called by BlameHoverProvider
  */
 function handleVcsError(error: VcsError, provider: IVcsProvider): void {
+  // Log all errors to Extension Host output
+  const logMessage = `[${provider.name}] ${error.type}${error.statusCode ? ` (${error.statusCode})` : ""}: ${error.message}`;
+
   if (!error.shouldShowUI) {
-    console.warn(`${provider.name} error (${error.type}):`, error.message);
+    outputChannel.appendLine(`WARNING: ${logMessage}`);
     return;
   }
+
+  outputChannel.appendLine(`ERROR: ${logMessage}`);
 
   switch (error.type) {
     case VcsErrorType.NoToken:
@@ -161,29 +212,83 @@ function handleVcsError(error: VcsError, provider: IVcsProvider): void {
 }
 
 /**
+ * Auto-detect VCS provider from current workspace's git remote
+ * @returns The detected provider or undefined if not detected
+ */
+function detectCurrentProvider(): IVcsProvider | undefined {
+  if (!state.gitService || !state.vcsProviderFactory) {
+    return undefined;
+  }
+
+  const activeEditor = vscode.window.activeTextEditor;
+  if (!activeEditor) {
+    return undefined;
+  }
+
+  const remoteUrl = state.gitService.getRemoteUrl(activeEditor.document.uri);
+  if (!remoteUrl) {
+    return undefined;
+  }
+
+  return state.vcsProviderFactory.detectProvider(remoteUrl);
+}
+
+/**
  * Register all extension commands
  */
 function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.SET_TOKEN, async () => {
+      let detectedProvider = detectCurrentProvider();
+
+      if (!detectedProvider) {
+        const selected = await vscode.window.showQuickPick(
+          ["GitLab", "GitHub"],
+          {
+            placeHolder: "Select VCS provider",
+            ignoreFocusOut: true,
+          },
+        );
+
+        if (!selected) {
+          return;
+        }
+
+        const providerId =
+          selected === "GitLab" ? VCS_PROVIDERS.GITLAB : VCS_PROVIDERS.GITHUB;
+        detectedProvider = state.vcsProviderFactory?.getProvider(providerId);
+      }
+
+      if (!detectedProvider) {
+        void vscode.window.showErrorMessage("Provider not available");
+        return;
+      }
+
+      const tokenPrompt =
+        detectedProvider.id === VCS_PROVIDERS.GITLAB
+          ? "Enter your GitLab Personal Access Token"
+          : "Enter your GitHub Personal Access Token";
+
+      const tokenPlaceholder =
+        detectedProvider.id === VCS_PROVIDERS.GITLAB
+          ? "glpat-xxxxxxxxxxxxxxxxxxxx"
+          : "ghp_xxxxxxxxxxxxxxxxxxxx";
+
       const token = await vscode.window.showInputBox({
-        prompt: "Enter your GitLab Personal Access Token",
+        prompt: tokenPrompt,
         password: true,
         ignoreFocusOut: true,
-        placeHolder: "glpat-xxxxxxxxxxxxxxxxxxxx",
+        placeHolder: tokenPlaceholder,
       });
 
       if (token) {
-        await state.tokenService?.setToken(VCS_PROVIDERS.GITLAB, token);
-        const provider = state.vcsProviderFactory?.getProvider(
-          VCS_PROVIDERS.GITLAB,
-        );
-        if (provider) {
-          provider.setToken(token);
-          provider.resetErrorState();
-        }
+        await state.tokenService?.setToken(detectedProvider.id, token);
+        detectedProvider.setToken(token);
+        detectedProvider.resetErrorState();
+
+        const wasDetected = detectedProvider.id === detectCurrentProvider()?.id;
         void vscode.window.showInformationMessage(
-          "GitLab token saved successfully",
+          `${detectedProvider.name} token saved successfully${wasDetected ? " (detected from workspace)" : ""}`,
         );
       }
     }),
@@ -201,29 +306,44 @@ function registerCommands(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.DELETE_TOKEN, async () => {
-      const provider = state.vcsProviderFactory?.getProvider(
-        VCS_PROVIDERS.GITLAB,
-      );
-      const hasToken = provider?.hasToken() ?? false;
+      let detectedProvider = detectCurrentProvider();
 
-      if (!hasToken) {
+      if (!detectedProvider) {
+        const selected = await vscode.window.showQuickPick(
+          ["GitLab", "GitHub"],
+          {
+            placeHolder: "Select VCS provider to delete token",
+            ignoreFocusOut: true,
+          },
+        );
+
+        if (!selected) {
+          return;
+        }
+
+        const providerId =
+          selected === "GitLab" ? VCS_PROVIDERS.GITLAB : VCS_PROVIDERS.GITHUB;
+        detectedProvider = state.vcsProviderFactory?.getProvider(providerId);
+      }
+
+      if (!detectedProvider || !detectedProvider.hasToken()) {
         void vscode.window.showInformationMessage(
-          "GitLab Blame: No token configured",
+          `${detectedProvider?.name ?? "VCS"}: No token configured`,
         );
         return;
       }
 
       const confirm = await vscode.window.showWarningMessage(
-        "Are you sure you want to delete your GitLab Personal Access Token?",
+        `Are you sure you want to delete your ${detectedProvider.name} Personal Access Token?`,
         { modal: true },
         "Delete",
       );
 
       if (confirm === "Delete") {
-        await state.tokenService?.deleteToken(VCS_PROVIDERS.GITLAB);
-        provider?.setToken(undefined);
+        await state.tokenService?.deleteToken(detectedProvider.id);
+        detectedProvider.setToken(undefined);
         void vscode.window.showInformationMessage(
-          "GitLab Blame: Token deleted successfully",
+          `${detectedProvider.name}: Token deleted successfully`,
         );
       }
     }),
@@ -232,31 +352,31 @@ function registerCommands(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand(COMMANDS.SHOW_STATUS, async () => {
       const config = vscode.workspace.getConfiguration();
-      const gitlabUrl = config.get<string>(
-        CONFIG_KEYS.GITLAB_URL,
-        DEFAULTS.GITLAB_URL,
-      );
       const cacheTTL = config.get<number>(
         CONFIG_KEYS.CACHE_TTL,
         DEFAULTS.CACHE_TTL_SECONDS,
       );
-      const provider = state.vcsProviderFactory?.getProvider(
-        VCS_PROVIDERS.GITLAB,
-      );
-      const hasToken = provider?.hasToken() ?? false;
       const cacheSize = state.cacheService?.size ?? 0;
       const gitInitialized = state.gitService?.isInitialized() ?? false;
 
+      const providers = state.vcsProviderFactory?.getAllProviders() ?? [];
+      const providerStatus = providers
+        .map((p) => {
+          const url = p.getHostUrl();
+          const hasToken = p.hasToken();
+          return `${p.name}:\n  URL: ${url}\n  Token: ${hasToken ? "✓" : "✗"}`;
+        })
+        .join("\n\n");
+
       const statusItems = [
-        `GitLab URL: ${gitlabUrl}`,
-        `Token: ${hasToken ? "Configured ✓" : "Not configured ✗"}`,
+        providerStatus,
         `Cache TTL: ${cacheTTL} seconds`,
         `Cache entries: ${cacheSize}`,
         `Git extension: ${gitInitialized ? "Connected ✓" : "Not connected ✗"}`,
       ];
 
       const action = await vscode.window.showInformationMessage(
-        `GitLab Blame Status\n\n${statusItems.join("\n")}`,
+        `VCS Blame Status\n\n${statusItems.join("\n\n")}`,
         "Set Token",
         "Open Settings",
       );

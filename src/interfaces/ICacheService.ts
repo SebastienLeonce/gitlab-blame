@@ -12,24 +12,27 @@ export interface ICacheService {
 
   /**
    * Get a cached MR for a commit SHA
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @returns The cached MR, null if cached as "no MR", or undefined if not in cache
    */
-  get(sha: string): MergeRequest | null | undefined;
+  get(providerId: string, sha: string): MergeRequest | null | undefined;
 
   /**
    * Cache an MR (or null for "no MR found") for a commit SHA
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @param mr The MR to cache, or null if no MR was found
    */
-  set(sha: string, mr: MergeRequest | null): void;
+  set(providerId: string, sha: string, mr: MergeRequest | null): void;
 
   /**
    * Check if a SHA is in the cache (and not expired)
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @returns true if the SHA is cached
    */
-  has(sha: string): boolean;
+  has(providerId: string, sha: string): boolean;
 
   /**
    * Clear all cached entries

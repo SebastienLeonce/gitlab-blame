@@ -67,7 +67,12 @@
         "gitlabBlame.gitlabUrl": {
           "type": "string",
           "default": "https://gitlab.com",
-          "description": "GitLab instance URL (e.g., https://gitlab.pytheascapital.net)"
+          "description": "GitLab instance URL (e.g., https://gitlab.enterprise.net)"
+        },
+        "gitlabBlame.githubUrl": {
+          "type": "string",
+          "default": "https://github.com",
+          "description": "GitHub instance URL (for GitHub Enterprise Server, e.g., https://github.enterprise.com)"
         },
         "gitlabBlame.cacheTTL": {
           "type": "number",

@@ -446,6 +446,7 @@ suite("BlameHoverProvider", () => {
     }
 
     test("returns cached MR on cache hit", async () => {
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(sampleMR);
       const token = createMockCancellationToken();
 
@@ -456,12 +457,20 @@ suite("BlameHoverProvider", () => {
         loading: false,
         checked: true,
       });
-      assert.strictEqual(mockCacheService.get.calledOnceWith(testSha), true);
-      // Should not call provider factory
-      assert.strictEqual(mockVcsProviderFactory.detectProvider.called, false);
+      assert.strictEqual(
+        mockCacheService.get.calledOnceWith("gitlab", testSha),
+        true,
+      );
+      // Provider should be detected but API not called
+      assert.strictEqual(mockVcsProviderFactory.detectProvider.called, true);
+      assert.strictEqual(
+        mockVcsProvider.getMergeRequestForCommit.called,
+        false,
+      );
     });
 
     test("returns cached null on cache hit with no MR", async () => {
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(null);
       const token = createMockCancellationToken();
 
@@ -475,12 +484,14 @@ suite("BlameHoverProvider", () => {
     });
 
     test("returns loading state when pending request exists", async () => {
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(undefined);
       const token = createMockCancellationToken();
 
-      // Simulate pending request
+      // Simulate pending request with provider-specific key
       const pendingRequests = getPendingRequests();
-      pendingRequests.set(testSha, Promise.resolve(sampleMR));
+      const pendingKey = `gitlab:${testSha}`;
+      pendingRequests.set(pendingKey, Promise.resolve(sampleMR));
 
       const result = await getMergeRequestInfo(testUri, testSha, token);
 
@@ -491,7 +502,7 @@ suite("BlameHoverProvider", () => {
       });
 
       // Cleanup
-      pendingRequests.delete(testSha);
+      pendingRequests.delete(pendingKey);
     });
 
     test("returns unchecked when no remote URL found", async () => {
@@ -615,7 +626,7 @@ suite("BlameHoverProvider", () => {
       await getMergeRequestInfo(testUri, testSha, token);
 
       assert.strictEqual(
-        mockCacheService.set.calledOnceWith(testSha, sampleMR),
+        mockCacheService.set.calledOnceWith("gitlab", testSha, sampleMR),
         true,
       );
     });
@@ -640,7 +651,7 @@ suite("BlameHoverProvider", () => {
         checked: true,
       });
       assert.strictEqual(
-        mockCacheService.set.calledOnceWith(testSha, null),
+        mockCacheService.set.calledOnceWith("gitlab", testSha, null),
         true,
       );
     });
@@ -658,13 +669,14 @@ suite("BlameHoverProvider", () => {
       const token = createMockCancellationToken();
 
       const pendingRequests = getPendingRequests();
+      const pendingKey = `gitlab:${testSha}`;
       assert.strictEqual(pendingRequests.size, 0);
 
       await getMergeRequestInfo(testUri, testSha, token);
 
       // After completion, pending request should be cleaned up
       assert.strictEqual(pendingRequests.size, 0);
-      assert.strictEqual(pendingRequests.has(testSha), false);
+      assert.strictEqual(pendingRequests.has(pendingKey), false);
     });
 
     test("adds pending request during API call", async () => {
@@ -684,6 +696,7 @@ suite("BlameHoverProvider", () => {
       const token = createMockCancellationToken();
 
       const pendingRequests = getPendingRequests();
+      const pendingKey = `gitlab:${testSha}`;
 
       // Start the request but don't await it yet
       const resultPromise = getMergeRequestInfo(testUri, testSha, token);
@@ -691,14 +704,14 @@ suite("BlameHoverProvider", () => {
       // Check that pending request was added
       // We need a small delay to let the async code run
       await new Promise((resolve) => setTimeout(resolve, 0));
-      assert.strictEqual(pendingRequests.has(testSha), true);
+      assert.strictEqual(pendingRequests.has(pendingKey), true);
 
       // Resolve the API call
       resolveApiCall!({ success: true, data: sampleMR });
       await resultPromise;
 
       // Pending request should be cleaned up
-      assert.strictEqual(pendingRequests.has(testSha), false);
+      assert.strictEqual(pendingRequests.has(pendingKey), false);
     });
 
     test("returns unchecked when request is cancelled during fetch", async () => {
@@ -782,7 +795,7 @@ suite("BlameHoverProvider", () => {
       await getMergeRequestInfo(testUri, testSha, token);
 
       assert.strictEqual(
-        mockCacheService.set.calledOnceWith(testSha, null),
+        mockCacheService.set.calledOnceWith("gitlab", testSha, null),
         true,
       );
     });
@@ -819,6 +832,7 @@ suite("BlameHoverProvider", () => {
 
     test("returns hover with MR link when commit has MR", async () => {
       mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(sampleMR);
       const token = createMockCancellationToken();
 
@@ -841,6 +855,7 @@ suite("BlameHoverProvider", () => {
 
     test("returns hover without MR link when commit has no MR", async () => {
       mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(null); // Cached as "no MR"
       const token = createMockCancellationToken();
 
@@ -901,7 +916,8 @@ suite("BlameHoverProvider", () => {
           pendingRequests: Map<string, Promise<MergeRequest | null>>;
         }
       ).pendingRequests;
-      pendingRequests.set(testBlameInfo.sha, Promise.resolve(sampleMR));
+      const pendingKey = `gitlab:${testBlameInfo.sha}`;
+      pendingRequests.set(pendingKey, Promise.resolve(sampleMR));
 
       const token = createMockCancellationToken();
 
@@ -916,7 +932,7 @@ suite("BlameHoverProvider", () => {
       assert.ok(markdown.value.includes("*Loading merge request...*"));
 
       // Cleanup
-      pendingRequests.delete(testBlameInfo.sha);
+      pendingRequests.delete(pendingKey);
     });
 
     test("formats MR link with truncation for long titles", async () => {
@@ -930,6 +946,7 @@ suite("BlameHoverProvider", () => {
       };
 
       mockGitService.getBlameForLine.resolves(testBlameInfo);
+      mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(longTitleMR);
       const token = createMockCancellationToken();
 

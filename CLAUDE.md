@@ -1,6 +1,6 @@
 # GitLab Blame MR Link - AI Context
 
-VS Code extension that adds GitLab Merge Request links to git blame hovers. Multi-provider architecture for future GitHub/Bitbucket support.
+VS Code extension that adds Merge Request/Pull Request links to git blame hovers. Supports GitLab and GitHub with multi-provider architecture.
 
 **🔍 For detailed documentation, see `ref/` folder** - this file is AI context only.
 
@@ -36,6 +36,7 @@ src/
 ├── providers/
 │   ├── BlameHoverProvider.ts        # Hover tooltip logic
 │   └── vcs/
+│       ├── GitHubProvider.ts        # GitHub VCS provider
 │       └── GitLabProvider.ts        # GitLab VCS provider
 ├── services/
 │   ├── CacheService.ts              # TTL cache (implements ICacheService)
@@ -160,6 +161,7 @@ test(gitlab): add edge case for nested groups
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
+| `gitlabBlame.githubUrl` | `https://github.com` | GitHub URL (auto-converted to API URL) |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout (seconds) |
 
 **📖 Full reference**: See `ref/configuration.md`
@@ -168,12 +170,12 @@ test(gitlab): add edge case for nested groups
 
 ## Extension Commands
 
-| Command ID | Title |
-|------------|-------|
-| `gitlabBlame.setToken` | Set Personal Access Token |
-| `gitlabBlame.deleteToken` | Delete Personal Access Token |
-| `gitlabBlame.clearCache` | Clear Cache |
-| `gitlabBlame.showStatus` | Show Status |
+| Command ID | Title | Auto-Detection |
+|------------|-------|----------------|
+| `gitlabBlame.setToken` | Set Personal Access Token | ✓ Detects GitLab/GitHub from git remote |
+| `gitlabBlame.deleteToken` | Delete Personal Access Token | ✓ Detects GitLab/GitHub from git remote |
+| `gitlabBlame.clearCache` | Clear Cache | N/A |
+| `gitlabBlame.showStatus` | Show Status | Shows all providers |
 
 ---
 
@@ -183,6 +185,9 @@ test(gitlab): add edge case for nested groups
 - `IVcsProvider` interface enables multi-provider support
 - Factory pattern: `VcsProviderFactory` auto-detects provider from remote URL
 - Providers return `VcsResult<T>` (data or error), never show UI directly
+- GitHub provider uses two-step approach:
+  1. Primary: `/commits/{sha}/pulls` API (works for merge commits)
+  2. Fallback: Parse commit message for `(#123)` and fetch specific PR (for individual commits)
 
 ### Services Return Data, Not UI
 - Services use `VcsResult` type with `shouldShowUI` flag
@@ -196,8 +201,9 @@ test(gitlab): add edge case for nested groups
 
 ### Cache Strategy
 - TTL-based cache (configurable, default 3600s)
+- Provider-specific cache keys: `{providerId}:{sha}` (prevents GitLab/GitHub collisions)
 - Auto-invalidates on git operations (pull, fetch, checkout, commit)
-- Caches `null` to avoid repeated API calls for commits without MRs
+- Caches `null` to avoid repeated API calls for commits without MRs/PRs
 
 ### Code Comments Philosophy
 
@@ -328,13 +334,21 @@ Extract to a well-named method:
 ## Quick Facts
 
 - **Minimum VS Code**: 1.84.0
-- **GitLab Token Scope**: `read_api`
+- **Supported Providers**: GitLab, GitHub
+- **Token Scopes**:
+  - GitLab: `read_api`
+  - GitHub: `repo` (private) or `public_repo` (public only)
 - **Runtime Dependencies**: None (zero dependencies)
 - **Dev Dependencies**: TypeScript, ESLint, esbuild, Mocha, Sinon, Husky
 - **Extension API**: Uses `vscode.git` (built-in)
-- **Test Count**: 225 tests, ~500ms execution
-- **Coverage**: 93-96% across all metrics (enforced: 90% lines/functions/statements, 85% branches)
-- **GitLab API**: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
+- **Test Count**: 229 tests, ~500ms execution
+- **Coverage**: 94-95% across all metrics (enforced: 90% lines/functions/statements, 85% branches)
+- **APIs**:
+  - GitLab: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
+  - GitHub: `GET /repos/{owner}/{repo}/commits/{sha}/pulls` + fallback to commit message parsing
+- **Known Limitations**:
+  - Uses `origin` remote only (see `ref/configuration.md`)
+  - GitHub: API only returns PRs for merge commits; fallback parses commit message for `(#123)` pattern
 
 ---
 
@@ -345,5 +359,10 @@ Extract to a well-named method:
 - Follow commit message format (enforced by hooks)
 - Update `ref/` docs when changing code
 - Run `npm run validate` before committing major changes
-- Supports nested GitLab groups and self-hosted instances
-- Architecture ready for GitHub/Bitbucket providers (see `ref/multi-provider.md`)
+- **Multi-Provider Support**: GitLab and GitHub are fully implemented and tested
+  - Auto-detects provider from git remote URL
+  - Separate token storage per provider
+  - Provider-specific cache keys prevent collisions
+- Supports nested GitLab groups and self-hosted instances (GitLab/GitHub Enterprise)
+- **Known Limitation**: Extension only uses `origin` remote (not other remotes)
+- Future: Bitbucket provider (see `ref/multi-provider.md`)

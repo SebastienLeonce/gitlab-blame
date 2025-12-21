@@ -6,12 +6,14 @@
 [![Installs](https://img.shields.io/vscode-marketplace/i/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 [![Rating](https://img.shields.io/vscode-marketplace/r/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 
-A lightweight VS Code extension that enhances git blame with GitLab Merge Request links. Hover over any line to see which MR introduced the change.
+A lightweight VS Code extension that enhances git blame with Merge Request/Pull Request links. Hover over any line to see which MR/PR introduced the change.
 
 ## Features
 
-- **Inline Blame Hover** - See commit info (author, date, message, SHA) and MR link on hover
-- **Multi-Instance GitLab Support** - Works with gitlab.com and self-hosted GitLab instances
+- **Multi-Provider Support** - Works with **GitLab** and **GitHub** (including Enterprise)
+- **Inline Blame Hover** - See commit info (author, date, message, SHA) and MR/PR link on hover
+- **Auto-Detection** - Automatically detects GitLab or GitHub from your git remote
+- **Multi-Instance Support** - Works with gitlab.com, github.com, and self-hosted instances
 - **Smart Caching** - TTL-based caching with automatic invalidation on git operations
 - **Secure Token Storage** - Uses VS Code SecretStorage for Personal Access Tokens
 - **Zero Dependencies** - Uses native VS Code and Fetch APIs
@@ -29,17 +31,32 @@ Search for "GitLab Blame MR Link" in the Extensions view (`Ctrl+Shift+X`).
 
 ## Configuration
 
-### GitLab Personal Access Token
+### Personal Access Token
+
+The extension **automatically detects** whether you're using GitLab or GitHub based on your git remote URL.
+
+#### For GitLab
 
 1. Generate a PAT in GitLab: **Settings > Access Tokens**
 2. Required scope: `read_api`
 3. Run command: `GitLab Blame: Set Personal Access Token`
+
+#### For GitHub
+
+1. Generate a PAT in GitHub: **Settings > Developer settings > Personal access tokens > Tokens (classic)**
+2. Required scopes:
+   - `repo` (for private repositories)
+   - OR `public_repo` (for public repositories only)
+3. Run command: `GitLab Blame: Set Personal Access Token`
+
+**Note**: The command auto-detects which provider you're using from your current workspace and shows the appropriate prompt.
 
 ### Settings
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
+| `gitlabBlame.githubUrl` | `https://github.com` | GitHub URL (auto-converted to API URL) |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout in seconds (0 to disable) |
 
 **Example** (`settings.json`):
@@ -47,32 +64,49 @@ Search for "GitLab Blame MR Link" in the Extensions view (`Ctrl+Shift+X`).
 ```json
 {
   "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com",
+  "gitlabBlame.githubUrl": "https://github.com",
   "gitlabBlame.cacheTTL": 7200
+}
+```
+
+**GitHub Enterprise**:
+```json
+{
+  "gitlabBlame.githubUrl": "https://github.enterprise.com"
 }
 ```
 
 ## Usage
 
-1. Open a file in a git repository with a GitLab remote
+1. Open a file in a git repository with a GitLab or GitHub remote
 2. Hover over any line
-3. See commit details and click the MR link to open in browser
+3. See commit details and click the MR/PR link to open in browser
+
+The extension automatically detects whether you're using GitLab or GitHub based on your git remote URL.
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `GitLab Blame: Set Personal Access Token` | Configure your GitLab PAT |
-| `GitLab Blame: Delete Personal Access Token` | Remove stored token |
-| `GitLab Blame: Clear Cache` | Clear cached MR data |
-| `GitLab Blame: Show Status` | Display configuration and cache info |
+| Command | Description | Auto-Detection |
+|---------|-------------|----------------|
+| `GitLab Blame: Set Personal Access Token` | Configure your PAT | ✓ Detects GitLab/GitHub from git remote |
+| `GitLab Blame: Delete Personal Access Token` | Remove stored token | ✓ Detects GitLab/GitHub from git remote |
+| `GitLab Blame: Clear Cache` | Clear cached MR/PR data | N/A |
+| `GitLab Blame: Show Status` | Display configuration and cache info for all providers | Shows GitLab + GitHub status |
 
 Access commands via Command Palette (`Ctrl+Shift+P`).
 
 ## Supported Remote Formats
 
+### GitLab
 - SSH: `git@gitlab.com:group/project.git`
 - HTTPS: `https://gitlab.com/group/project.git`
 - Nested groups: `group/subgroup/project`
+
+### GitHub
+- SSH: `git@github.com:owner/repo.git`
+- HTTPS: `https://github.com/owner/repo.git`
+
+**Note**: The extension uses the `origin` remote. If you have multiple remotes, ensure `origin` points to your primary VCS.
 
 ## Development
 
@@ -124,6 +158,7 @@ src/
 ├── providers/
 │   ├── BlameHoverProvider.ts        # Hover provider (VCS-agnostic)
 │   └── vcs/
+│       ├── GitHubProvider.ts        # GitHub VCS implementation
 │       └── GitLabProvider.ts        # GitLab VCS implementation
 ├── services/
 │   ├── GitService.ts                # VS Code Git API wrapper
@@ -138,10 +173,12 @@ src/
 
 ### Key Components
 
-- **VcsProviderFactory**: Auto-detects VCS provider from git remote URL
-- **IVcsProvider**: Interface enabling GitLab, GitHub, Bitbucket support
+- **VcsProviderFactory**: Auto-detects VCS provider from git remote URL (GitLab or GitHub)
+- **IVcsProvider**: Interface enabling multi-provider support (GitLab, GitHub, future: Bitbucket)
 - **TokenService**: Secure multi-provider token storage via VS Code SecretStorage
-- **CacheService**: TTL-based cache with automatic invalidation on git operations
+- **CacheService**: TTL-based cache with provider isolation and automatic invalidation
+
+**Provider-Specific Caching**: Cache keys include provider ID (`gitlab:sha` vs `github:sha`) to prevent collisions when the same commit SHA exists in both providers.
 
 For detailed architecture documentation, see [`ref/architecture.md`](ref/architecture.md).
 
@@ -186,21 +223,29 @@ For detailed architecture documentation, see [`ref/architecture.md`](ref/archite
 
 ## FAQ
 
-### Does this work with GitHub or Bitbucket?
+### Does this work with GitHub?
 
-Not yet. The extension currently supports GitLab only, but the architecture is designed to support multiple VCS providers. GitHub and Bitbucket support is planned for future releases.
+**Yes!** GitHub support is fully implemented. The extension automatically detects whether you're using GitLab or GitHub based on your git remote URL. Both github.com and GitHub Enterprise Server are supported.
 
 ### Do I need a Personal Access Token?
 
 Yes. The extension requires a GitLab Personal Access Token with `read_api` scope to fetch merge request information via the GitLab API.
 
-### Does this work with self-hosted GitLab instances?
+### Does this work with self-hosted instances?
 
-Yes! Configure your GitLab instance URL in settings:
+Yes! Both GitLab and GitHub Enterprise are supported.
 
+**GitLab**:
 ```json
 {
   "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com"
+}
+```
+
+**GitHub Enterprise**:
+```json
+{
+  "gitlabBlame.githubUrl": "https://github.enterprise.com"
 }
 ```
 
@@ -217,16 +262,28 @@ No. The extension:
 Yes. The extension supports:
 - Private repositories (with proper token permissions)
 - Nested GitLab groups (e.g., `group/subgroup/project`)
+- GitHub organizations and user repositories
 - Both SSH and HTTPS remote URLs
+
+### Does this support multiple remotes?
+
+**No, only the `origin` remote is used.** If your repository has multiple remotes (e.g., `origin`, `upstream`, `fork`), the extension will only use the `origin` remote to determine which VCS provider to use and where to fetch MR/PR information.
+
+**Workaround**: If you need to use a different remote, rename it to `origin`:
+```bash
+git remote rename origin old-origin
+git remote rename your-remote origin
+```
 
 ### How do I check if the extension is working?
 
 Run the command: `GitLab Blame: Show Status`
 
 This displays:
-- Current configuration (GitLab URL, cache TTL)
-- Token status (configured or missing)
-- Cache statistics
+- Current configuration for **all providers** (GitLab URL, GitHub URL, cache TTL)
+- Token status (configured ✓ or missing ✗) for each provider
+- Cache statistics (entries, TTL)
+- Git extension connection status
 
 ## Contributing
 

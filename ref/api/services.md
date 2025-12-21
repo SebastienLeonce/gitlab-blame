@@ -212,6 +212,16 @@ const cacheService = new CacheService();
 
 Reads `gitlabBlame.cacheTTL` from VS Code configuration (default: 3600 seconds).
 
+### Cache Key Format
+
+**Cache keys use format**: `{providerId}:{sha}`
+
+**Examples**:
+- `gitlab:abc123def456` - GitLab commit
+- `github:abc123def456` - GitHub commit
+
+**Why**: Prevents cache collisions when the same commit SHA exists in both GitLab and GitHub repositories (e.g., mirrored repos).
+
 ### Methods
 
 #### `initialize(gitApi: API | undefined): void`
@@ -223,32 +233,66 @@ Set up cache with Git API watchers for auto-invalidation.
 
 **Auto-invalidation**: Cache clears on any repository state change (pull, fetch, checkout, commit).
 
-#### `get(sha: string): MergeRequest | null | undefined`
+#### `get(providerId: string, sha: string): MergeRequest | null | undefined`
 
 Get cached MR for a commit.
+
+**Parameters**:
+- `providerId`: VCS provider identifier (e.g., "gitlab", "github")
+- `sha`: Commit SHA
 
 **Returns**:
 - `MergeRequest`: Cached MR data
 - `null`: Cached as "no MR exists"
 - `undefined`: Not in cache or expired
 
-#### `set(sha: string, mr: MergeRequest | null): void`
+**Example**:
+```typescript
+const cached = cacheService.get("github", "abc123");
+if (cached === null) {
+  console.log("Commit has no PR (cached)");
+} else if (cached === undefined) {
+  console.log("Not in cache");
+} else {
+  console.log("PR:", cached);
+}
+```
+
+#### `set(providerId: string, sha: string, mr: MergeRequest | null): void`
 
 Cache an MR (or `null` for "no MR").
 
+**Parameters**:
+- `providerId`: VCS provider identifier
+- `sha`: Commit SHA
+- `mr`: MR data or `null` if commit has no MR
+
 Does nothing if TTL is 0 (caching disabled).
 
-#### `has(sha: string): boolean`
+**Example**:
+```typescript
+// Cache a PR
+cacheService.set("github", "abc123", prData);
 
-Check if SHA is cached and not expired.
+// Cache "no PR exists"
+cacheService.set("github", "def456", null);
+```
+
+#### `has(providerId: string, sha: string): boolean`
+
+Check if SHA is cached and not expired for a specific provider.
+
+**Parameters**:
+- `providerId`: VCS provider identifier
+- `sha`: Commit SHA
 
 #### `clear(): void`
 
-Clear all cached entries.
+Clear all cached entries (for all providers).
 
 #### `size: number` (getter)
 
-Get current cache entry count.
+Get current cache entry count (across all providers).
 
 #### `dispose(): void`
 
@@ -367,3 +411,23 @@ interface GitLabMR {
   };
 }
 ```
+
+### GitHubPR
+
+Internal type matching GitHub API response:
+
+```typescript
+interface GitHubPR {
+  id: number;
+  number: number;
+  title: string;
+  html_url: string;
+  state: string;
+  merged_at: string | null;
+  user?: {
+    login: string;
+  };
+}
+```
+
+**Note**: Both `GitLabMR` and `GitHubPR` are mapped to the common `MergeRequest` type for internal use.

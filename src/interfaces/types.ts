@@ -40,6 +40,21 @@ export interface GitLabMR {
 }
 
 /**
+ * GitHub API Pull Request response structure
+ */
+export interface GitHubPR {
+  id: number;
+  number: number;
+  title: string;
+  html_url: string;
+  state: string;
+  merged_at: string | null;
+  user?: {
+    login: string;
+  };
+}
+
+/**
  * Remote repository information
  */
 export interface RemoteInfo {

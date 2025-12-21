@@ -103,17 +103,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     sha: string,
     token: vscode.CancellationToken,
   ): Promise<{ mr: MergeRequest | null; loading: boolean; checked: boolean }> {
-    const cached = this.cacheService.get(sha);
-    if (cached !== undefined) {
-      // Cache hit (could be MR or null for "no MR")
-      return { mr: cached, loading: false, checked: true };
-    }
-
-    const pendingKey = sha;
-    if (this.pendingRequests.has(pendingKey)) {
-      return { mr: null, loading: true, checked: false };
-    }
-
     const remoteUrl = this.gitService.getRemoteUrl(uri);
     if (!remoteUrl) {
       return { mr: null, loading: false, checked: false };
@@ -122,6 +111,17 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     const provider = this.vcsProviderFactory.detectProvider(remoteUrl);
     if (!provider) {
       return { mr: null, loading: false, checked: false };
+    }
+
+    const cached = this.cacheService.get(provider.id, sha);
+    if (cached !== undefined) {
+      // Cache hit (could be MR or null for "no MR")
+      return { mr: cached, loading: false, checked: true };
+    }
+
+    const pendingKey = `${provider.id}:${sha}`;
+    if (this.pendingRequests.has(pendingKey)) {
+      return { mr: null, loading: true, checked: false };
     }
 
     if (!provider.hasToken()) {
@@ -179,12 +179,12 @@ export class BlameHoverProvider implements vscode.HoverProvider {
         this.onVcsError(result.error, provider);
       }
       // Cache null to avoid repeated errors
-      this.cacheService.set(sha, null);
+      this.cacheService.set(provider.id, sha, null);
       return null;
     }
 
     const mr = result.data ?? null;
-    this.cacheService.set(sha, mr);
+    this.cacheService.set(provider.id, sha, mr);
     return mr;
   }
 

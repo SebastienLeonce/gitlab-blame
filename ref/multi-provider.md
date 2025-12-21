@@ -9,10 +9,10 @@ This extension supports multiple VCS providers (GitLab, GitHub, Bitbucket) throu
 │                    VcsProviderFactory                            │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐             │
 │  │GitLabProvider│  │GitHubProvider│  │BitbucketProvider│         │
-│  │ (active)    │  │ (future)    │  │ (future)    │             │
-│  └──────┬──────┘  └─────────────┘  └─────────────┘             │
-│         │                                                        │
-│         ▼                                                        │
+│  │ (active)    │  │ (active)    │  │ (future)    │             │
+│  └──────┬──────┘  └──────┬──────┘  └─────────────┘             │
+│         │                │                                       │
+│         ▼                ▼                                       │
 │  ┌─────────────────────────────────────────────────────────┐    │
 │  │                    IVcsProvider                          │    │
 │  │  - getMergeRequestForCommit()                           │    │
@@ -145,7 +145,7 @@ await tokenService.setToken("gitlab", "glpat-xxx");
 | Provider | Secret Key |
 |----------|------------|
 | GitLab | `gitlabBlame.token` |
-| GitHub | `gitlabBlame.githubToken` (future) |
+| GitHub | `gitlabBlame.githubToken` |
 | Bitbucket | `gitlabBlame.bitbucketToken` (future) |
 
 ## Adding a New Provider
@@ -164,7 +164,7 @@ export class GitHubProvider implements IVcsProvider {
   readonly name = "GitHub";
 
   private token: string | undefined;
-  private hostUrl = "https://api.github.com";
+  private hostUrl = "https://github.com";
 
   // Implement all interface methods...
 
@@ -239,7 +239,7 @@ suite("GitHubProvider", () => {
     const provider = new GitHubProvider();
     const info = provider.parseRemoteUrl("git@github.com:owner/repo.git");
     assert.deepStrictEqual(info, {
-      host: "https://api.github.com",
+      host: "https://github.com",
       projectPath: "owner/repo",
       provider: "github",
     });
@@ -261,16 +261,69 @@ suite("GitHubProvider", () => {
 - **Provider ID**: `gitlab`
 - **API**: GitLab REST API v4
 - **Endpoint**: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`
-- **Auth Header**: `PRIVATE-TOKEN: <token>`
-- **MR Selection**: First merged MR by `merged_at` date
+- **Auth Headers**:
+  - `PRIVATE-TOKEN: <token>`
+  - `Accept: application/json`
+- **Token Scope**: `read_api`
+- **MR Selection**: First merged MR by `merged_at` date (ascending)
+- **Self-Hosted**: Configure via `gitlabBlame.gitlabUrl` setting
 
-### GitHub (Planned)
+### GitHub (Active)
 
 - **Provider ID**: `github`
 - **API**: GitHub REST API v3
-- **Endpoint**: `GET /repos/{owner}/{repo}/commits/{sha}/pulls`
-- **Auth Header**: `Authorization: Bearer <token>`
-- **PR Selection**: TBD
+- **Primary Endpoint**: `GET /repos/{owner}/{repo}/commits/{sha}/pulls`
+- **Fallback Strategy**: Parse commit message for `(#123)` pattern, then `GET /repos/{owner}/{repo}/pulls/{number}`
+- **Auth Headers**:
+  - `Authorization: token <personal_access_token>` (note: `token` prefix, not `Bearer`)
+  - `Accept: application/vnd.github+json`
+- **Token Scope**: `repo` (private repos) or `public_repo` (public repos only)
+- **PR Selection**: First merged PR by `merged_at` date (ascending), same logic as GitLab
+- **Rate Limits**: 5,000 req/hour (authenticated), 60 req/hour (unauthenticated)
+- **Self-Hosted**: Configure via `gitlabBlame.githubUrl` setting
+
+**API Limitation**: GitHub's `/commits/{sha}/pulls` endpoint only returns PRs for merge commits, not individual commits within a PR branch. To handle this:
+1. Try the primary endpoint first
+2. If empty, fetch commit details and parse message for `(#123)` pattern (GitHub auto-adds this)
+3. If found, fetch that specific PR via `/pulls/{number}`
+
+This ensures PRs are found for both merge commits and individual branch commits.
+
+#### GitHub Enterprise Detection
+
+The GitHub provider supports both GitHub.com and GitHub Enterprise instances:
+
+**Detection Methods**:
+
+1. **Automatic Detection** (hostname contains "github"):
+   - `git@github.com:owner/repo.git` ✓
+   - `https://github.com/owner/repo.git` ✓
+   - `git@github.enterprise.com:owner/repo.git` ✓
+
+2. **Config-Based Detection** (for custom hostnames):
+   - Set `gitlabBlame.githubUrl` to your API URL (e.g., `https://api.git.company.com`)
+   - Provider extracts hostname from config and matches against remote URL
+   - Example: Config `https://api.git.company.com` → matches `git@git.company.com:owner/repo.git`
+
+**API URL to Git Hostname Mapping**:
+- `api.github.com` → `github.com`
+- `api.github.enterprise.com` → `github.enterprise.com`
+- `api.git.company.com` → `git.company.com` (strips `api.` prefix)
+
+**Configuration Examples**:
+
+```json
+{
+  // GitHub.com (default, no config needed)
+  "gitlabBlame.githubUrl": "https://github.com",
+
+  // GitHub Enterprise Server
+  "gitlabBlame.githubUrl": "https://github.enterprise.com",
+
+  // Custom GitHub Enterprise (without "github" in hostname)
+  "gitlabBlame.githubUrl": "https://git.company.com"
+}
+```
 
 ### Bitbucket (Planned)
 

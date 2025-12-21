@@ -103,4 +103,54 @@ suite("Extension Integration Tests", () => {
     // Just verify it started without throwing
     assert.ok(promise, "Show status command started");
   });
+
+  test("GitHub configuration is accessible", () => {
+    const config = vscode.workspace.getConfiguration("gitlabBlame");
+
+    // Check the actual configuration value
+    const githubUrl = config.get<string>("githubUrl");
+    assert.strictEqual(
+      githubUrl,
+      "https://github.com",
+      "Default GitHub URL incorrect",
+    );
+
+    // Check the default value defined in package.json
+    const githubUrlInspect = config.inspect<string>("githubUrl");
+    assert.strictEqual(
+      githubUrlInspect?.defaultValue,
+      "https://github.com",
+      "Default GitHub URL in package.json incorrect",
+    );
+  });
+
+  test("GitHub configuration can be updated", async () => {
+    const config = vscode.workspace.getConfiguration("gitlabBlame");
+    const originalUrl = config.get<string>("githubUrl");
+
+    try {
+      // Update configuration
+      await config.update(
+        "githubUrl",
+        "https://github.enterprise.com",
+        vscode.ConfigurationTarget.Global,
+      );
+
+      // Verify update - get fresh config object
+      const updatedConfig = vscode.workspace.getConfiguration("gitlabBlame");
+      const updatedUrl = updatedConfig.get<string>("githubUrl");
+      assert.strictEqual(
+        updatedUrl,
+        "https://github.enterprise.com",
+        "GitHub configuration not updated",
+      );
+    } finally {
+      // Restore original value
+      await config.update(
+        "githubUrl",
+        originalUrl,
+        vscode.ConfigurationTarget.Global,
+      );
+    }
+  });
 });

@@ -75,19 +75,30 @@ export class CacheService implements ICacheService {
   }
 
   /**
+   * Create a cache key from provider ID and commit SHA
+   * Format: {providerId}:{sha}
+   * This prevents cache collisions when the same SHA exists in multiple providers
+   */
+  private getCacheKey(providerId: string, sha: string): string {
+    return `${providerId}:${sha}`;
+  }
+
+  /**
    * Get a cached MR for a commit SHA
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @returns The cached MR, null if cached as "no MR", or undefined if not in cache
    */
-  get(sha: string): MergeRequest | null | undefined {
-    const entry = this.cache.get(sha);
+  get(providerId: string, sha: string): MergeRequest | null | undefined {
+    const key = this.getCacheKey(providerId, sha);
+    const entry = this.cache.get(key);
 
     if (!entry) {
       return undefined;
     }
 
     if (Date.now() > entry.expiresAt) {
-      this.cache.delete(sha);
+      this.cache.delete(key);
       return undefined;
     }
 
@@ -96,16 +107,18 @@ export class CacheService implements ICacheService {
 
   /**
    * Cache an MR (or null for "no MR found") for a commit SHA
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @param mr The MR to cache, or null if no MR was found
    */
-  set(sha: string, mr: MergeRequest | null): void {
+  set(providerId: string, sha: string, mr: MergeRequest | null): void {
     // Don't cache if TTL is 0 (caching disabled)
     if (this.ttlMs <= 0) {
       return;
     }
 
-    this.cache.set(sha, {
+    const key = this.getCacheKey(providerId, sha);
+    this.cache.set(key, {
       value: mr,
       expiresAt: Date.now() + this.ttlMs,
     });
@@ -113,11 +126,12 @@ export class CacheService implements ICacheService {
 
   /**
    * Check if a SHA is in the cache (and not expired)
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
    * @param sha The commit SHA
    * @returns true if the SHA is cached
    */
-  has(sha: string): boolean {
-    return this.get(sha) !== undefined;
+  has(providerId: string, sha: string): boolean {
+    return this.get(providerId, sha) !== undefined;
   }
 
   /**

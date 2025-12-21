@@ -49,8 +49,8 @@ parseGitLabRemote('https://gitlab.example.com/org/team/project.git');
 // => { host: 'https://gitlab.example.com', projectPath: 'org/team/project' }
 
 // Self-hosted with nested groups
-parseGitLabRemote('git@gitlab.pytheascapital.net:backend/services/api.git');
-// => { host: 'https://gitlab.pytheascapital.net', projectPath: 'backend/services/api' }
+parseGitLabRemote('git@gitlab.enterprise.net:backend/services/api.git');
+// => { host: 'https://gitlab.enterprise.net', projectPath: 'backend/services/api' }
 
 // Invalid URL
 parseGitLabRemote('not-a-url');

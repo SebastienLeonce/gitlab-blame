@@ -167,6 +167,131 @@ if (provider) {
 
 ---
 
+## GitHubProvider
+
+**Location**: `src/providers/vcs/GitHubProvider.ts`
+
+GitHub implementation of `IVcsProvider`.
+
+### Constructor
+
+```typescript
+const provider = new GitHubProvider(hostUrl?: string);
+```
+
+**Parameters**:
+- `hostUrl`: GitHub URL (default: "https://github.com", auto-converted to API URL)
+  - For GitHub.com: Use default
+  - For GitHub Enterprise: Use your instance URL (e.g., "https://github.enterprise.com")
+
+### Properties
+
+- `id`: "github"
+- `name`: "GitHub"
+
+### API Details
+
+**Endpoint**: `GET /repos/:owner/:repo/commits/:sha/pulls`
+
+**Headers**:
+```
+Authorization: token <personal_access_token>
+Accept: application/vnd.github.v3+json
+```
+
+**Required Token Scopes**: `repo` (for private repos) or `public_repo` (for public repos only)
+
+### PR Selection Logic
+
+1. Filter to merged PRs with `merged_at` date
+2. Sort by `merged_at` ascending
+3. Return first (earliest merged)
+4. Fallback: return first PR if none are merged
+
+**Note**: Same logic as GitLab for consistency.
+
+### GitHub Enterprise Detection
+
+The provider supports both GitHub.com and GitHub Enterprise instances.
+
+**Detection Strategy**:
+
+1. **GitHub.com**: Automatically detected if remote URL contains "github" (case-insensitive)
+   - `git@github.com:owner/repo.git` ✓
+   - `https://github.com/owner/repo.git` ✓
+
+2. **GitHub Enterprise with "github" in hostname**: Automatically detected
+   - `git@github.enterprise.com:owner/repo.git` ✓
+
+3. **GitHub Enterprise without "github" in hostname**: Config-based detection
+   - Set `gitlabBlame.githubUrl` to your API URL (e.g., `https://api.git.company.com`)
+   - Provider extracts hostname from config and matches against remote URL
+   - Example: Config `https://api.git.company.com` → matches `git@git.company.com:owner/repo.git`
+
+**API URL to Git Hostname Mapping**:
+- `api.github.com` → `github.com`
+- `api.github.enterprise.com` → `github.enterprise.com`
+- `api.git.company.com` → `git.company.com`
+
+The provider automatically strips the `api.` prefix when matching remote URLs.
+
+### Error Handling
+
+Returns `VcsResult` with typed errors (same as GitLab):
+
+```typescript
+// No token configured
+{ success: false, error: { type: VcsErrorType.NoToken, shouldShowUI: true } }
+
+// Invalid/expired token (401, 403)
+{ success: false, error: { type: VcsErrorType.InvalidToken, statusCode: 401 } }
+
+// Not found (404)
+{ success: false, error: { type: VcsErrorType.NotFound, shouldShowUI: false } }
+
+// Rate limited (429)
+{ success: false, error: { type: VcsErrorType.RateLimited, shouldShowUI: false } }
+
+// Network error
+{ success: false, error: { type: VcsErrorType.NetworkError, message: "..." } }
+```
+
+**Rate Limits**:
+- Authenticated: 5,000 requests/hour
+- Unauthenticated: 60 requests/hour
+
+### Usage Example
+
+```typescript
+import { GitHubProvider } from "./providers/vcs/GitHubProvider";
+import { VcsProviderFactory } from "./services/VcsProviderFactory";
+
+const factory = new VcsProviderFactory();
+
+// GitHub.com
+const githubProvider = new GitHubProvider("https://github.com");
+githubProvider.setToken("ghp_xxxxxxxxxxxx");
+factory.registerProvider(githubProvider);
+
+// GitHub Enterprise
+const gheProvider = new GitHubProvider("https://github.enterprise.com");
+gheProvider.setToken("ghp_xxxxxxxxxxxx");
+factory.registerProvider(gheProvider);
+
+// Later, auto-detect and use
+const provider = factory.detectProvider("git@github.com:owner/repo.git");
+if (provider) {
+  const result = await provider.getMergeRequestForCommit("owner/repo", "abc123");
+  if (result.success) {
+    console.log("PR:", result.data);
+  } else {
+    console.error("Error:", result.error);
+  }
+}
+```
+
+---
+
 ## ICacheService Interface
 
 **Location**: `src/interfaces/ICacheService.ts`
@@ -176,14 +301,16 @@ Interface for cache service implementations.
 ```typescript
 interface ICacheService {
   initialize(gitApi: GitAPI | undefined): void;
-  get(sha: string): MergeRequest | null | undefined;
-  set(sha: string, mr: MergeRequest | null): void;
-  has(sha: string): boolean;
+  get(providerId: string, sha: string): MergeRequest | null | undefined;
+  set(providerId: string, sha: string, mr: MergeRequest | null): void;
+  has(providerId: string, sha: string): boolean;
   clear(): void;
   readonly size: number;
   dispose(): void;
 }
 ```
+
+**Note**: Cache methods now require `providerId` to prevent collisions when the same commit SHA exists in both GitLab and GitHub repositories.
 
 See [CacheService in Services API](./services.md#cacheservice) for implementation details.
 

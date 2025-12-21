@@ -3,6 +3,7 @@
  */
 export const CONFIG_KEYS = {
   GITLAB_URL: "gitlabBlame.gitlabUrl",
+  GITHUB_URL: "gitlabBlame.githubUrl",
   CACHE_TTL: "gitlabBlame.cacheTTL",
 } as const;
 
@@ -11,6 +12,7 @@ export const CONFIG_KEYS = {
  */
 export const SECRET_KEYS = {
   GITLAB_TOKEN: "gitlabBlame.token",
+  GITHUB_TOKEN: "gitlabBlame.githubToken",
 } as const;
 
 /**
@@ -28,6 +30,7 @@ export const COMMANDS = {
  */
 export const DEFAULTS = {
   GITLAB_URL: "https://gitlab.com",
+  GITHUB_URL: "https://github.com",
   CACHE_TTL_SECONDS: 3600,
 } as const;
 
@@ -41,4 +44,3 @@ export const VCS_PROVIDERS = {
 } as const;
 
 export type VcsProviderId = (typeof VCS_PROVIDERS)[keyof typeof VCS_PROVIDERS];
-// Test comment

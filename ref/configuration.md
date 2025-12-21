@@ -31,6 +31,38 @@ GitLab instance URL for API calls.
 
 ---
 
+### `gitlabBlame.githubUrl`
+
+| Property | Value |
+|----------|-------|
+| Type | `string` |
+| Default | `"https://github.com"` |
+| Scope | User/Workspace |
+
+GitHub URL (automatically converted to API URL for API calls).
+
+**Examples**:
+```json
+{
+  "gitlabBlame.githubUrl": "https://github.com"
+}
+```
+
+```json
+{
+  "gitlabBlame.githubUrl": "https://github.enterprise.com"
+}
+```
+
+**Note**: Must include protocol (`https://`). Do not include trailing slash. For GitHub Enterprise Server without "github" in hostname, this setting enables provider detection.
+
+**GitHub Enterprise Detection**:
+- **GitHub.com**: Default URL works automatically
+- **GitHub Enterprise with "github" in hostname**: Auto-detected (e.g., `github.enterprise.com`)
+- **GitHub Enterprise without "github" in hostname**: Configure this setting to your API URL (e.g., `https://api.git.company.com`)
+
+---
+
 ### `gitlabBlame.cacheTTL`
 
 | Property | Value |
@@ -64,42 +96,78 @@ Cache time-to-live for MR lookups.
 
 ---
 
-## Personal Access Token
+## Personal Access Tokens
 
-Stored securely in VS Code's `SecretStorage`. Not visible in settings.
+Tokens are stored securely in VS Code's `SecretStorage`. Not visible in settings. The extension supports multiple VCS providers with separate tokens.
 
-### Creating a Token
+### Auto-Detection
+
+The extension **automatically detects which provider you're using** based on your git remote URL:
+- If your remote is `git@github.com:...` or `https://github.com/...` → GitHub token will be requested
+- If your remote is `git@gitlab.com:...` or `https://gitlab.com/...` → GitLab token will be requested
+
+### Creating a GitLab Token
 
 1. Open GitLab → **Settings** → **Access Tokens**
 2. Create token with scope: `read_api`
 3. Copy the token (starts with `glpat-`)
 
-### Setting the Token
+### Creating a GitHub Token
 
-**Via Command Palette**:
+1. Open GitHub → **Settings** → **Developer settings** → **Personal access tokens** → **Tokens (classic)**
+2. Generate new token with scopes:
+   - `repo` (for private repositories)
+   - OR `public_repo` (for public repositories only)
+3. Copy the token (starts with `ghp_`)
+
+### Setting a Token
+
+**Via Command Palette** (Auto-Detection):
 1. Press `Ctrl+Shift+P` / `Cmd+Shift+P`
 2. Run `GitLab Blame: Set Personal Access Token`
-3. Paste token and press Enter
+3. **Extension auto-detects provider from current workspace**
+4. Shows provider-specific prompt (e.g., "Enter your GitHub Personal Access Token")
+5. Paste token and press Enter
+
+If no workspace is open or provider cannot be detected, you'll be asked to select the provider.
 
 **Programmatically** (for testing):
 ```typescript
+// GitLab
 await context.secrets.store("gitlabBlame.token", "glpat-xxx");
+
+// GitHub
+await context.secrets.store("gitlabBlame.githubToken", "ghp-xxx");
 ```
 
-### Deleting the Token
+### Deleting a Token
 
 1. Press `Ctrl+Shift+P` / `Cmd+Shift+P`
 2. Run `GitLab Blame: Delete Personal Access Token`
-3. Confirm deletion
+3. **Extension auto-detects provider from current workspace**
+4. Confirm deletion
+
+If no workspace is open, you'll be asked to select which provider's token to delete.
 
 ### Token Requirements
+
+#### GitLab
 
 | Scope | Required | Purpose |
 |-------|----------|---------|
 | `read_api` | Yes | Access MR information |
 | `read_repository` | No | Not needed |
 
-**Minimum Permission**: `read_api` scope is sufficient to fetch MR data.
+#### GitHub
+
+| Scope | Required | Purpose |
+|-------|----------|---------|
+| `repo` | For private repos | Access PR information in private repos |
+| `public_repo` | For public repos only | Access PR information in public repos |
+
+**Token Format**:
+- GitLab: Starts with `glpat-`
+- GitHub: Starts with `ghp_` (classic tokens)
 
 ---
 
@@ -109,19 +177,26 @@ Commands available via Command Palette (`Ctrl+Shift+P`):
 
 | Command | ID | Description |
 |---------|-----|-------------|
-| Set Personal Access Token | `gitlabBlame.setToken` | Configure GitLab PAT |
-| Delete Personal Access Token | `gitlabBlame.deleteToken` | Remove stored token |
+| Set Personal Access Token | `gitlabBlame.setToken` | Configure VCS token (auto-detects provider) |
+| Delete Personal Access Token | `gitlabBlame.deleteToken` | Remove stored token (auto-detects provider) |
 | Clear Cache | `gitlabBlame.clearCache` | Manual cache invalidation |
 | Show Status | `gitlabBlame.showStatus` | Display current configuration |
 
+**Auto-Detection**: `setToken` and `deleteToken` commands automatically detect which provider (GitLab or GitHub) based on your current workspace's git remote URL. If no workspace is open or detection fails, you'll be prompted to select the provider.
+
 ### Show Status Output
 
-Displays:
-- GitLab URL (configured instance)
-- Token status (Configured/Not configured)
-- Cache TTL (in seconds)
-- Cache entries (current count)
-- Git extension status (Connected/Not connected)
+Displays status for **all configured providers**:
+- **GitLab**:
+  - URL (configured instance)
+  - Token status (✓ or ✗)
+- **GitHub**:
+  - URL (configured instance)
+  - Token status (✓ or ✗)
+- **Cache**:
+  - TTL (in seconds)
+  - Entries (current count)
+- **Git Extension**: Connected/Not connected status
 
 ---
 
@@ -195,7 +270,9 @@ esbuild ./src/extension.ts --bundle --outfile=dist/extension.js \
 
 ---
 
-## Multi-Instance GitLab
+## Multi-Instance Configuration
+
+### Multiple GitLab Instances
 
 To use with multiple GitLab instances:
 
@@ -210,4 +287,51 @@ To use with multiple GitLab instances:
 }
 ```
 
-**Note**: The extension uses the remote URL from the repository to determine which GitLab host to call, but falls back to `gitlabUrl` setting when remote parsing fails.
+### Multiple GitHub Instances
+
+For GitHub Enterprise Server:
+
+1. Set `gitlabBlame.githubUrl` in **workspace settings**
+2. Each workspace can have its own GitHub API URL
+3. Token must have access to the configured GitHub instance
+
+**Example workspace settings** (`.vscode/settings.json`):
+```json
+{
+  "gitlabBlame.githubUrl": "https://api.github.enterprise.com"
+}
+```
+
+### Multi-Provider Workspaces
+
+The extension automatically detects the correct provider from your git remote URL, so you can work with both GitLab and GitHub repositories without changing settings:
+
+```json
+{
+  "gitlabBlame.gitlabUrl": "https://gitlab.com",
+  "gitlabBlame.githubUrl": "https://github.com"
+}
+```
+
+**How it works**:
+- Extension reads git remote URL from `origin`
+- Detects provider (GitLab vs GitHub) based on hostname
+- Uses appropriate token and API for that provider
+
+---
+
+## Known Limitations
+
+### Origin Remote Only
+
+The extension **only uses the `origin` remote** when fetching remote URLs. If your repository has multiple remotes, only `origin` will be used for MR/PR lookups.
+
+**Why**: Simplifies behavior and covers 95%+ of use cases. Git conventions treat `origin` as the primary remote.
+
+**Workaround**: If you need to use a different remote, rename it to `origin`:
+```bash
+git remote rename origin old-origin
+git remote rename your-remote origin
+```
+
+**Future Enhancement**: A `gitlabBlame.remoteName` setting may be added in the future to override this behavior based on user feedback.
