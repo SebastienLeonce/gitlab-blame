@@ -15,6 +15,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.0.0] - 2025-12-21
+
+### Added
+- **GitHub Provider Support** - Full GitHub and GitHub Enterprise support with smart fallback PR detection
+  - Primary detection via `/commits/{sha}/pulls` API endpoint
+  - Fallback to commit message parsing for `(#123)` and `Merge pull request` patterns
+  - Automatic provider detection from git remote URLs
+- Claude Code release automation skill for streamlined release process
+- Comprehensive public API test coverage (90%+ across all metrics)
+
+### Changed
+- **BREAKING**: Extension now supports multiple VCS providers (GitLab + GitHub)
+- Enhanced quality gates with enforced coverage thresholds (90% lines/functions/statements, 85% branches)
+- Updated marketplace branding to reflect multi-provider architecture
+
+### Fixed
+- Marketplace links updated to correct publisher name (`sebastien-dev`)
+
 ## [0.2.2] - 2025-12-20
 
 ### Fixed
