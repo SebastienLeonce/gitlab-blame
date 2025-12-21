@@ -1,7 +1,7 @@
 {
   "name": "gitlab-blame",
-  "displayName": "GitLab Blame MR Link",
-  "description": "Show GitLab Merge Request links in git blame hovers",
+  "displayName": "Git Blame MR/PR Link",
+  "description": "Add Merge Request/Pull Request links to git blame hovers for GitLab and GitHub",
   "version": "1.0.1",
   "publisher": "sebastien-dev",
   "license": "MIT",
@@ -14,20 +14,25 @@
     "vscode": "^1.84.0"
   },
   "keywords": [
-    "gitlab",
     "git",
     "blame",
+    "gitlab",
+    "github",
     "merge request",
+    "pull request",
+    "mr",
+    "pr",
     "vcs",
     "hover",
-    "scm"
+    "scm",
+    "link"
   ],
   "categories": [
     "SCM Providers",
     "Other"
   ],
   "galleryBanner": {
-    "color": "#FC6D26",
+    "color": "#2D2D2D",
     "theme": "dark"
   },
   "qna": "marketplace",
@@ -43,23 +48,23 @@
     "commands": [
       {
         "command": "gitlabBlame.setToken",
-        "title": "GitLab Blame: Set Personal Access Token"
+        "title": "Git Blame: Set Personal Access Token"
       },
       {
         "command": "gitlabBlame.deleteToken",
-        "title": "GitLab Blame: Delete Personal Access Token"
+        "title": "Git Blame: Delete Personal Access Token"
       },
       {
         "command": "gitlabBlame.clearCache",
-        "title": "GitLab Blame: Clear Cache"
+        "title": "Git Blame: Clear Cache"
       },
       {
         "command": "gitlabBlame.showStatus",
-        "title": "GitLab Blame: Show Status"
+        "title": "Git Blame: Show Status"
       }
     ],
     "configuration": {
-      "title": "GitLab Blame",
+      "title": "Git Blame",
       "properties": {
         "gitlabBlame.gitlabUrl": {
           "type": "string",

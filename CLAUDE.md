@@ -1,8 +1,13 @@
-# GitLab Blame MR Link - AI Context
+# Git Blame MR/PR Link - AI Context
 
 VS Code extension that adds Merge Request/Pull Request links to git blame hovers. Supports GitLab and GitHub with multi-provider architecture.
 
-**🔍 For detailed documentation, see `ref/` folder** - this file is AI context only.
+**🔍 For detailed documentation:**
+- `README.md` - **Marketplace-optimized** user documentation
+- `CONTRIBUTING.md` - Development setup, architecture overview, testing guidelines
+- `ref/` folder - Detailed API and architecture documentation
+
+This file is AI context only.
 
 ---
 
@@ -10,7 +15,8 @@ VS Code extension that adds Merge Request/Pull Request links to git blame hovers
 
 | Topic | Reference |
 |-------|-----------|
-| **Architecture** | `ref/architecture.md` - System design, data flow, components |
+| **Contributing Guide** | `CONTRIBUTING.md` - Development setup, architecture overview, PR guidelines |
+| **Architecture** | `ref/architecture.md` - Detailed system design, data flow, components |
 | **Quality Assurance** | `ref/quality-assurance.md` - Git hooks, testing, coverage |
 | **Release Process** | `ref/release-process.md` - Versioning, CI/CD, publishing |
 | **Services API** | `ref/api/services.md` - Service interfaces and contracts |
@@ -231,11 +237,13 @@ test(gitlab): add edge case for nested groups
 
 **Before committing code changes**:
 
+- [ ] User-facing changes → Update `README.md` (marketplace-focused)
+- [ ] Development changes → Update `CONTRIBUTING.md`
 - [ ] New/modified public methods → Update `ref/api/`
-- [ ] Architecture changes → Update `ref/architecture.md`
+- [ ] Architecture changes → Update `ref/architecture.md` and `CONTRIBUTING.md`
 - [ ] New patterns → Update `ref/patterns.md`
-- [ ] Configuration changes → Update `ref/configuration.md` and `CLAUDE.md`
-- [ ] Quality/testing changes → Update `ref/quality-assurance.md`
+- [ ] Configuration changes → Update `README.md`, `ref/configuration.md`, and `CLAUDE.md`
+- [ ] Quality/testing changes → Update `ref/quality-assurance.md` and `CONTRIBUTING.md`
 
 Pre-commit hook will remind if `src/` changed but `ref/` didn't.
 
@@ -355,9 +363,12 @@ Extract to a well-named method:
 ## Notes for AI
 
 - Always read `package.json` before running scripts (script names may vary)
-- Use `ref/` documentation for implementation details
+- **Documentation Structure**:
+  - `README.md` is marketplace-optimized for end users (do NOT add dev docs here)
+  - `CONTRIBUTING.md` contains all development documentation
+  - `ref/` folder has detailed API and architecture docs
 - Follow commit message format (enforced by hooks)
-- Update `ref/` docs when changing code
+- Update docs when changing code (README for users, CONTRIBUTING for devs, ref/ for details)
 - Run `npm run validate` before committing major changes
 - **Multi-Provider Support**: GitLab and GitHub are fully implemented and tested
   - Auto-detects provider from git remote URL

@@ -1,4 +1,4 @@
-# GitLab Blame MR Link
+# Git Blame MR/PR Link
 
 [![CI](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastienleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sebastienleonce/gitlab-blame)
@@ -7,355 +7,267 @@
 [![Installs](https://img.shields.io/vscode-marketplace/i/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 [![Rating](https://img.shields.io/vscode-marketplace/r/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 
-A lightweight VS Code extension that enhances git blame with Merge Request/Pull Request links. Hover over any line to see which MR/PR introduced the change.
+Instantly see which Merge Request or Pull Request introduced any line of code - right in your git blame hover.
 
-## Features
+<!-- TODO: Add screenshot showing blame hover with MR/PR link -->
+![Hover Example](images/screenshot-hover.png)
 
-- **Multi-Provider Support** - Works with **GitLab** and **GitHub** (including Enterprise)
-- **Inline Blame Hover** - See commit info (author, date, message, SHA) and MR/PR link on hover
-- **Auto-Detection** - Automatically detects GitLab or GitHub from your git remote
-- **Multi-Instance Support** - Works with gitlab.com, github.com, and self-hosted instances
-- **Smart Caching** - TTL-based caching with automatic invalidation on git operations
-- **Secure Token Storage** - Uses VS Code SecretStorage for Personal Access Tokens
-- **Zero Dependencies** - Uses native VS Code and Fetch APIs
+## 🎯 What It Does
 
-## Installation
+**The Problem**: Git blame shows who changed code and when, but not **why** - the context behind the change lives in Merge Requests (GitLab) or Pull Requests (GitHub).
 
-### From VS Code Marketplace
+**The Solution**: This extension adds clickable MR/PR links directly to VS Code's blame hovers.
 
-Search for "GitLab Blame MR Link" in the Extensions view (`Ctrl+Shift+X`) or [install from marketplace](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame).
+**The Benefit**: Navigate from code → discussion/review/approval in one click. Understand the full context of any change without leaving your editor.
 
-### From Open VSX Registry
+## ✨ Features
 
-For **VSCodium**, **Gitpod**, or other VS Code alternatives:
+- 🔗 **Direct MR/PR Links** - Click to open in browser from blame hover
+- 🌍 **Multi-Provider** - Works with **GitLab** and **GitHub** (including self-hosted/Enterprise)
+- 🚀 **Smart Caching** - TTL-based caching with auto-invalidation on git operations
+- 🔒 **Secure Tokens** - Encrypted storage via VS Code SecretStorage
+- ⚡ **Zero Dependencies** - Small bundle, fast activation, native APIs only
+- 🎯 **Auto-Detection** - Automatically detects GitLab or GitHub from your git remote
 
-1. Search for "GitLab Blame MR Link" in the Extensions view
-2. Or install from [Open VSX Registry](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
-3. Or via command line:
-   ```bash
-   codium --install-extension sebastien-dev.gitlab-blame
-   ```
+## 📦 Installation
+
+### VS Code Marketplace
+
+1. Open **Extensions** view (`Ctrl+Shift+X` / `Cmd+Shift+X`)
+2. Search for **"Git Blame MR/PR Link"**
+3. Click **Install**
+
+Or [install directly from marketplace →](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
+
+### Open VSX Registry
+
+For **VSCodium**, **Gitpod**, **Theia**, or other VS Code alternatives:
+
+1. Open **Extensions** view
+2. Search for **"Git Blame MR/PR Link"**
+3. Click **Install**
+
+Or install via command line:
+```bash
+codium --install-extension sebastien-dev.gitlab-blame
+```
+
+Or [install from Open VSX →](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
 
 ### Manual Installation
 
-1. Download the `.vsix` file from [releases](https://github.com/SebastienLeonce/gitlab-blame/releases)
-2. Run `code --install-extension gitlab-blame-*.vsix` (VS Code) or `codium --install-extension gitlab-blame-*.vsix` (VSCodium)
+1. Download `.vsix` from [releases](https://github.com/SebastienLeonce/gitlab-blame/releases)
+2. Run:
+   ```bash
+   code --install-extension gitlab-blame-*.vsix
+   # Or for VSCodium:
+   codium --install-extension gitlab-blame-*.vsix
+   ```
 
-## Configuration
+## ⚙️ Quick Setup
 
-### Personal Access Token
+### 1. Generate Personal Access Token
 
-The extension **automatically detects** whether you're using GitLab or GitHub based on your git remote URL.
+The extension **automatically detects** whether you're using GitLab or GitHub from your git remote.
 
-#### For GitLab
+#### GitLab
+1. Go to **Settings → Access Tokens** in GitLab
+2. Create token with `read_api` scope
+3. Copy the token
 
-1. Generate a PAT in GitLab: **Settings > Access Tokens**
-2. Required scope: `read_api`
-3. Run command: `GitLab Blame: Set Personal Access Token`
+#### GitHub
+1. Go to **Settings → Developer settings → Personal access tokens → Tokens (classic)**
+2. Create token with:
+   - `repo` scope (for private repositories)
+   - OR `public_repo` scope (for public repositories only)
+3. Copy the token
 
-#### For GitHub
+### 2. Configure Extension
 
-1. Generate a PAT in GitHub: **Settings > Developer settings > Personal access tokens > Tokens (classic)**
-2. Required scopes:
-   - `repo` (for private repositories)
-   - OR `public_repo` (for public repositories only)
-3. Run command: `GitLab Blame: Set Personal Access Token`
+1. Open Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run: **`Git Blame: Set Personal Access Token`**
+3. Paste your token (auto-detects GitLab or GitHub)
+4. Done! 🎉
 
-**Note**: The command auto-detects which provider you're using from your current workspace and shows the appropriate prompt.
+### 3. Use It
 
-### Settings
+1. Open any file in a git repository
+2. Hover over any line
+3. See commit details + clickable MR/PR link
+
+<!-- TODO: Add GIF demonstrating hover → click → browser -->
+![Demo GIF](images/demo.gif)
+
+## 🔧 Settings
+
+Configure in VS Code settings (`settings.json`):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
-| `gitlabBlame.githubUrl` | `https://github.com` | GitHub URL (auto-converted to API URL) |
+| `gitlabBlame.githubUrl` | `https://github.com` | GitHub instance URL |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout in seconds (0 to disable) |
 
-**Example** (`settings.json`):
-
-```json
-{
-  "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com",
-  "gitlabBlame.githubUrl": "https://github.com",
-  "gitlabBlame.cacheTTL": 7200
-}
-```
-
-**GitHub Enterprise**:
-```json
-{
-  "gitlabBlame.githubUrl": "https://github.enterprise.com"
-}
-```
-
-## Usage
-
-1. Open a file in a git repository with a GitLab or GitHub remote
-2. Hover over any line
-3. See commit details and click the MR/PR link to open in browser
-
-The extension automatically detects whether you're using GitLab or GitHub based on your git remote URL.
-
-## Commands
-
-| Command | Description | Auto-Detection |
-|---------|-------------|----------------|
-| `GitLab Blame: Set Personal Access Token` | Configure your PAT | ✓ Detects GitLab/GitHub from git remote |
-| `GitLab Blame: Delete Personal Access Token` | Remove stored token | ✓ Detects GitLab/GitHub from git remote |
-| `GitLab Blame: Clear Cache` | Clear cached MR/PR data | N/A |
-| `GitLab Blame: Show Status` | Display configuration and cache info for all providers | Shows GitLab + GitHub status |
-
-Access commands via Command Palette (`Ctrl+Shift+P`).
-
-## Supported Remote Formats
-
-### GitLab
-- SSH: `git@gitlab.com:group/project.git`
-- HTTPS: `https://gitlab.com/group/project.git`
-- Nested groups: `group/subgroup/project`
-
-### GitHub
-- SSH: `git@github.com:owner/repo.git`
-- HTTPS: `https://github.com/owner/repo.git`
-
-**Note**: The extension uses the `origin` remote. If you have multiple remotes, ensure `origin` points to your primary VCS.
-
-## Development
-
-### Prerequisites
-
-- Node.js 18.x or 20.x
-- VS Code 1.84.0+
-
-### Setup
-
-```bash
-npm install
-```
-
-### Build & Run
-
-```bash
-npm run watch     # Development with sourcemaps
-npm run build     # Production build
-```
-
-Press `F5` in VS Code to launch the extension in debug mode.
-
-### Test
-
-```bash
-npm run pretest   # Compile tests
-npm test          # Run tests
-```
-
-### Lint
-
-```bash
-npm run lint      # Check for issues
-npm run lint:fix  # Auto-fix issues
-```
-
-## Architecture
-
-This extension uses a **multi-provider architecture** that supports multiple VCS platforms through an abstraction layer.
-
-```
-src/
-├── extension.ts                     # Entry point, command registration
-├── interfaces/
-│   ├── ICacheService.ts             # Cache service interface
-│   ├── IVcsProvider.ts              # VCS provider interface
-│   └── types.ts                     # Shared type definitions
-├── providers/
-│   ├── BlameHoverProvider.ts        # Hover provider (VCS-agnostic)
-│   └── vcs/
-│       ├── GitHubProvider.ts        # GitHub VCS implementation
-│       └── GitLabProvider.ts        # GitLab VCS implementation
-├── services/
-│   ├── GitService.ts                # VS Code Git API wrapper
-│   ├── VcsProviderFactory.ts        # Provider registry & auto-detection
-│   ├── TokenService.ts              # Multi-provider token management
-│   └── CacheService.ts              # TTL cache with auto-invalidation
-├── utils/
-│   └── remoteParser.ts              # Git remote URL parser
-└── types/
-    └── git.d.ts                     # VS Code Git extension types
-```
-
-### Key Components
-
-- **VcsProviderFactory**: Auto-detects VCS provider from git remote URL (GitLab or GitHub)
-- **IVcsProvider**: Interface enabling multi-provider support (GitLab, GitHub, future: Bitbucket)
-- **TokenService**: Secure multi-provider token storage via VS Code SecretStorage
-- **CacheService**: TTL-based cache with provider isolation and automatic invalidation
-
-**Provider-Specific Caching**: Cache keys include provider ID (`gitlab:sha` vs `github:sha`) to prevent collisions when the same commit SHA exists in both providers.
-
-For detailed architecture documentation, see [`ref/architecture.md`](ref/architecture.md).
-
-## Troubleshooting
-
-### MR link not showing in hover
-
-**Possible causes:**
-
-1. **No Personal Access Token configured**
-   - Run: `GitLab Blame: Set Personal Access Token`
-   - Ensure token has `read_api` scope
-
-2. **Commit not associated with any MR**
-   - Some commits may not be part of a merge request
-   - Direct commits to main branch won't have MR links
-
-3. **Cache contains stale data**
-   - Run: `GitLab Blame: Clear Cache`
-   - Cache auto-invalidates on git operations
-
-4. **Remote URL not recognized**
-   - Check that your git remote uses GitLab
-   - Supported formats: SSH (`git@gitlab.com:group/project.git`) or HTTPS (`https://gitlab.com/group/project.git`)
-   - Run `git remote -v` to verify
-
-### Authentication errors
-
-**Error: "Token not found" or "Authentication failed"**
-
-1. Verify token is set: Run `GitLab Blame: Show Status`
-2. Check token scope includes `read_api`
-3. For self-hosted GitLab, verify `gitlabBlame.gitlabUrl` setting matches your instance
-
-### Performance issues
-
-**Hovers are slow to appear**
-
-1. Increase cache TTL: Set `gitlabBlame.cacheTTL` to a higher value (e.g., `7200` for 2 hours)
-2. Check network latency to your GitLab instance
-3. Consider using a local cache proxy if on a slow network
-
-## FAQ
-
-### Does this work with GitHub?
-
-**Yes!** GitHub support is fully implemented. The extension automatically detects whether you're using GitLab or GitHub based on your git remote URL. Both github.com and GitHub Enterprise Server are supported.
-
-### Do I need a Personal Access Token?
-
-Yes. The extension requires a GitLab Personal Access Token with `read_api` scope to fetch merge request information via the GitLab API.
-
-### Does this work with self-hosted instances?
-
-Yes! Both GitLab and GitHub Enterprise are supported.
-
-**GitLab**:
+**Example for GitLab Enterprise**:
 ```json
 {
   "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com"
 }
 ```
 
-**GitHub Enterprise**:
+**Example for GitHub Enterprise**:
 ```json
 {
   "gitlabBlame.githubUrl": "https://github.enterprise.com"
 }
 ```
 
+## 💡 Commands
+
+Access via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
+
+| Command | Description | Auto-Detection |
+|---------|-------------|----------------|
+| `Git Blame: Set Personal Access Token` | Configure your PAT | ✓ Detects GitLab/GitHub from git remote |
+| `Git Blame: Delete Personal Access Token` | Remove stored token | ✓ Detects GitLab/GitHub from git remote |
+| `Git Blame: Clear Cache` | Clear cached MR/PR data | N/A |
+| `Git Blame: Show Status` | Display configuration and cache info | Shows both providers |
+
+## 🌐 Supported Remote Formats
+
+### GitLab
+- **SSH**: `git@gitlab.com:group/project.git`
+- **HTTPS**: `https://gitlab.com/group/project.git`
+- **Nested groups**: `group/subgroup/project.git`
+
+### GitHub
+- **SSH**: `git@github.com:owner/repo.git`
+- **HTTPS**: `https://github.com/owner/repo.git`
+
+**Note**: The extension uses the `origin` remote only.
+
+## ❓ FAQ
+
+### Does this work with GitHub?
+
+**Yes!** GitHub and GitHub Enterprise are fully supported. The extension automatically detects whether you're using GitLab or GitHub based on your git remote URL.
+
+### Does this work with self-hosted instances?
+
+**Yes!** Both GitLab (self-hosted) and GitHub Enterprise Server are supported. Just configure the URL in settings:
+
+```json
+{
+  "gitlabBlame.gitlabUrl": "https://gitlab.mycompany.com"
+  // or
+  "gitlabBlame.githubUrl": "https://github.enterprise.com"
+}
+```
+
 ### Will this slow down my editor?
 
-No. The extension:
-- Uses efficient TTL-based caching to minimize API calls
+**No.** The extension:
 - Only makes API calls when you hover over a line
-- Supports cancellation if you move away before the request completes
+- Uses TTL-based caching to minimize API calls
+- Supports request cancellation if you move away
 - Has zero runtime dependencies (small bundle size)
+- Auto-invalidates cache on git operations
 
-### Can I use this in private/nested repositories?
+### Why isn't the MR/PR link showing?
 
-Yes. The extension supports:
-- Private repositories (with proper token permissions)
-- Nested GitLab groups (e.g., `group/subgroup/project`)
-- GitHub organizations and user repositories
+**Common causes**:
+
+1. **No token configured** → Run `Git Blame: Set Personal Access Token`
+2. **Commit not in any MR/PR** → Direct commits to main won't have links
+3. **Stale cache** → Run `Git Blame: Clear Cache`
+4. **Wrong remote format** → Run `git remote -v` to verify URL
+
+Use `Git Blame: Show Status` to check token and configuration.
+
+### Can I use this with private repositories?
+
+**Yes!** Make sure your token has the correct scope:
+- **GitLab**: `read_api`
+- **GitHub**: `repo` (for private repos) or `public_repo` (for public only)
+
+The extension supports:
+- Private repositories
+- Nested GitLab groups (`group/subgroup/project`)
+- GitHub organizations
 - Both SSH and HTTPS remote URLs
 
-### Does this support multiple remotes?
+### Does this support multiple git remotes?
 
-**No, only the `origin` remote is used.** If your repository has multiple remotes (e.g., `origin`, `upstream`, `fork`), the extension will only use the `origin` remote to determine which VCS provider to use and where to fetch MR/PR information.
+**No, currently only `origin` is supported.** If you have multiple remotes (`origin`, `upstream`, `fork`), the extension only uses `origin`.
 
-**Workaround**: If you need to use a different remote, rename it to `origin`:
+**Workaround**: Rename your desired remote to `origin`:
 ```bash
 git remote rename origin old-origin
 git remote rename your-remote origin
 ```
 
-### How do I check if the extension is working?
+### How do I verify it's working?
 
-Run the command: `GitLab Blame: Show Status`
+Run: **`Git Blame: Show Status`**
 
-This displays:
-- Current configuration for **all providers** (GitLab URL, GitHub URL, cache TTL)
-- Token status (configured ✓ or missing ✗) for each provider
-- Cache statistics (entries, TTL)
+This shows:
+- ✓ Token status for each provider (GitLab + GitHub)
+- Configuration (URLs, cache TTL)
+- Cache statistics
 - Git extension connection status
 
-## Contributing
+## 🐛 Troubleshooting
 
-Contributions are welcome! Here's how to get started:
+### Authentication Errors
 
-### Development Setup
+**Error: "Token not found" or "Authentication failed"**
 
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/SebastienLeonce/gitlab-blame.git
-   cd gitlab-blame
-   ```
+1. Verify token is set: `Git Blame: Show Status`
+2. Check token has correct scope (`read_api` for GitLab, `repo` for GitHub)
+3. For self-hosted instances, verify URL setting matches your instance
 
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
+### Performance Issues
 
-3. **Build and test**
-   ```bash
-   npm run watch      # Start watch mode
-   # Press F5 in VS Code to launch Extension Development Host
-   ```
+**Hovers are slow**
 
-### Running Tests
+1. Increase cache TTL: `"gitlabBlame.cacheTTL": 7200` (2 hours)
+2. Check network latency to your instance
+3. Clear cache if it's become stale: `Git Blame: Clear Cache`
 
+### Still Having Issues?
+
+- Check [GitHub Issues](https://github.com/SebastienLeonce/gitlab-blame/issues)
+- Open a new issue with:
+  - Extension version
+  - VS Code version
+  - Provider (GitLab/GitHub)
+  - Error message from Output panel (`Output → Git Blame MR/PR Link`)
+
+## 🤝 Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for:
+- Development setup
+- Architecture overview
+- Testing guidelines
+- Pull request process
+
+Quick start:
 ```bash
-npm run pretest    # Compile tests
-npm test           # Run test suite
-npm run test:coverage  # Generate coverage report
+git clone https://github.com/SebastienLeonce/gitlab-blame.git
+cd gitlab-blame
+npm install
+npm run watch  # Start development
+# Press F5 in VS Code to launch Extension Development Host
 ```
 
-### Code Quality
+## 📝 Changelog
 
-Before submitting a PR:
+See [CHANGELOG.md](CHANGELOG.md) for version history and release notes.
 
-```bash
-npm run typecheck  # TypeScript type checking
-npm run lint       # Check for lint issues
-npm run lint:fix   # Auto-fix lint issues
-npm run build      # Verify production build works
-```
+## 📄 License
 
-### Pull Request Guidelines
+MIT - See [LICENSE](LICENSE)
 
-1. **Create a feature branch** from `main`
-2. **Write tests** for new functionality
-3. **Update documentation** if adding features or changing behavior
-4. **Ensure all tests pass** and lint checks succeed
-5. **Keep commits focused** - one logical change per commit
+---
 
-### Documentation
-
-When making significant changes, update:
-- `README.md` - User-facing documentation
-- `ref/` folder - Architecture, API, and pattern documentation
-- `CLAUDE.md` - Project context for development
-
-See [`ref/`](ref/) for detailed API and architecture documentation.
-
-## License
-
-MIT
+**Made with ❤️ for developers who want context, not just commits.**
