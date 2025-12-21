@@ -15,6 +15,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.1.0] - 2025-12-21
+
+### Changed
+- **Extension Branding** - Display name changed from "GitLab Blame MR Link" to "Git Blame MR/PR Link" to better reflect multi-provider support
+- **Command Titles** - Updated from "GitLab Blame:" to "Git Blame:" prefix for provider-neutral branding
+- **Gallery Banner** - Changed from GitLab orange to neutral dark gray (#2D2D2D) for multi-provider identity
+- **Marketplace Optimization** - Completely restructured README.md for marketplace presentation:
+  - Reduced from 362 to 274 lines with user-focused content
+  - Added problem-solution-benefit hook
+  - Added emoji section headers for improved scannability
+  - Removed development documentation (moved to CONTRIBUTING.md)
+  - Added visual placeholders for screenshots and demo GIF
+- **Keywords** - Added GitHub-related keywords (github, pull request, pr, mr, link) for better discoverability
+- **Description** - Updated to explicitly mention both GitLab and GitHub support
+
+### Added
+- **CONTRIBUTING.md** - Comprehensive development documentation including:
+  - Development setup and prerequisites
+  - Architecture overview
+  - Testing guidelines and coverage requirements
+  - Code quality standards and git hooks
+  - Pull request process and commit message format
+- **Visual Assets Folder** - Created `images/` directory with:
+  - README.md with screenshot creation instructions
+  - Placeholder files for screenshot-hover.png and demo.gif
+
+### Technical
+- Extension ID preserved as `gitlab-blame` (no breaking changes for existing users)
+- All functionality remains backward compatible
+- Improved marketplace discoverability for GitHub users
+
 ## [1.0.1] - 2025-12-21
 
 ### Added
