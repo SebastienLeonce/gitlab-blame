@@ -16,9 +16,9 @@ Activate this skill when the user:
 
 ## What This Skill Does
 
-1. **Pre-release validation** (optional skip)
+1. **Pre-release validation**
    - Runs lint, typecheck, and build
-   - Coverage check can be skipped if needed
+   - Ensures all tests pass with coverage thresholds
 
 2. **CHANGELOG update**
    - Prompts for release notes or auto-generates from commits
@@ -32,7 +32,6 @@ Activate this skill when the user:
 4. **Push to remote**
    - Pushes version bump commit to main
    - Pushes tag to trigger CI/CD workflow
-   - Can bypass pre-push hook if needed
 
 5. **Monitoring**
    - Provides GitHub Actions workflow URL
@@ -56,13 +55,10 @@ When this skill is invoked:
 - Show any uncommitted changes
 - If not clean, offer to show status or stash
 
-### 2. Validation (Optional)
+### 2. Validation
 - Ask if user wants to run validation
 - If yes, run `npm run validate`
-- If coverage/tests fail:
-  - Explain coverage is known issue (see commit 1a03bce)
-  - Offer to bypass with --no-verify
-  - If tests fail (not just coverage), recommend fixing
+- If validation fails, recommend fixing issues before proceeding
 
 ### 3. Update CHANGELOG
 - Read CHANGELOG.md
@@ -82,9 +78,8 @@ When this skill is invoked:
 - Show success message
 
 ### 6. Push to Remote
-- Push commit: `git push origin main --no-verify`
-- Push tag: `git push origin v{version} --no-verify`
-- Always use --no-verify to bypass pre-push hook (coverage issue)
+- Push commit: `git push origin main`
+- Push tag: `git push origin v{version}`
 
 ### 7. Provide Monitoring Info
 - Show GitHub Actions URL: https://github.com/SebastienLeonce/gitlab-blame/actions
@@ -92,10 +87,13 @@ When this skill is invoked:
   1. Verify version matches tag
   2. Run typecheck, lint, build
   3. Run tests
-  4. Package extension (.vsix)
+  4. Publish to Open VSX Registry
   5. Publish to VS Code Marketplace
   6. Create GitHub Release with changelog
 - Mention typical completion time (~2-3 minutes)
+- After workflow completes, verify on both marketplaces:
+  - VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame
+  - Open VSX Registry: https://open-vsx.org/extension/sebastien-dev/gitlab-blame
 
 ## Error Handling
 
@@ -115,10 +113,9 @@ Reference these files when executing this skill:
 
 ## Important Notes
 
-- **Pre-push hook will fail** due to coverage thresholds - this is expected, always use --no-verify
-- **CI coverage checks are disabled** (see commit 1a03bce)
 - **Manual tagging workflow** - tags trigger publish, not automatic version detection
 - **Semantic versioning**: patch = bug fixes, minor = features, major = breaking changes
+- **Quality gates** - Pre-push hooks enforce coverage thresholds and test success
 
 ## Example Flow
 

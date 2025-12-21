@@ -67,15 +67,40 @@ jobs:
         env:
           DISPLAY: ':99.0'
 
-      # Package extension (.vsix file)
-      - name: Package extension
-        run: npx vsce package
+      # Publish to Open VSX Registry
+      - name: Publish to Open VSX Registry
+        uses: HaaLeo/publish-vscode-extension@v2
+        id: publish-openvsx
+        with:
+          pat: ${{ secrets.OPEN_VSX_TOKEN }}
+        continue-on-error: true
 
       # Publish to VS Code Marketplace
       - name: Publish to VS Code Marketplace
-        run: npx vsce publish -p ${{ secrets.VSCE_PAT }}
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        uses: HaaLeo/publish-vscode-extension@v2
+        id: publish-vscode
+        with:
+          pat: ${{ secrets.VSCE_PAT }}
+          registryUrl: https://marketplace.visualstudio.com
+
+      # Report publishing status
+      - name: Report publishing status
+        if: always()
+        run: |
+          echo "📊 Publishing Status Report"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Open VSX Registry: ${{ steps.publish-openvsx.outcome }}"
+          echo "VS Code Marketplace: ${{ steps.publish-vscode.outcome }}"
+          echo ""
+          if [ "${{ steps.publish-vscode.outcome }}" != "success" ]; then
+            echo "❌ VS Code Marketplace publishing failed!"
+            exit 1
+          fi
+          if [ "${{ steps.publish-openvsx.outcome }}" != "success" ]; then
+            echo "⚠️  Open VSX Registry publishing failed, but VS Marketplace succeeded"
+            echo "💡 You may need to publish to Open VSX manually:"
+            echo "    npx ovsx publish -p <OPEN_VSX_TOKEN>"
+          fi
 
       # Generate changelog for this release
       - name: Generate changelog

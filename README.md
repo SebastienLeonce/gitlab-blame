@@ -3,6 +3,7 @@
 [![CI](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastienleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sebastienleonce/gitlab-blame)
 [![VS Code Marketplace](https://img.shields.io/vscode-marketplace/v/sebastien-dev.gitlab-blame.svg?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
+[![Open VSX](https://img.shields.io/open-vsx/v/sebastien-dev/gitlab-blame?label=Open%20VSX)](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
 [![Installs](https://img.shields.io/vscode-marketplace/i/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 [![Rating](https://img.shields.io/vscode-marketplace/r/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 
@@ -22,12 +23,23 @@ A lightweight VS Code extension that enhances git blame with Merge Request/Pull 
 
 ### From VS Code Marketplace
 
-Search for "GitLab Blame MR Link" in the Extensions view (`Ctrl+Shift+X`).
+Search for "GitLab Blame MR Link" in the Extensions view (`Ctrl+Shift+X`) or [install from marketplace](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame).
+
+### From Open VSX Registry
+
+For **VSCodium**, **Gitpod**, or other VS Code alternatives:
+
+1. Search for "GitLab Blame MR Link" in the Extensions view
+2. Or install from [Open VSX Registry](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
+3. Or via command line:
+   ```bash
+   codium --install-extension sebastien-dev.gitlab-blame
+   ```
 
 ### Manual Installation
 
-1. Download the `.vsix` file from releases
-2. Run `code --install-extension gitlab-blame-mr-link-*.vsix`
+1. Download the `.vsix` file from [releases](https://github.com/SebastienLeonce/gitlab-blame/releases)
+2. Run `code --install-extension gitlab-blame-*.vsix` (VS Code) or `codium --install-extension gitlab-blame-*.vsix` (VSCodium)
 
 ## Configuration
 
