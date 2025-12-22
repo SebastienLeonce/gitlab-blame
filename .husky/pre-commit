@@ -31,6 +31,31 @@ else
   echo ""
 fi
 
+# Validate package-lock.json is in sync with package.json
+PKG_JSON_CHANGED=$(git diff --cached --name-only | grep '^package.json$' || true)
+PKG_LOCK_CHANGED=$(git diff --cached --name-only | grep '^package-lock.json$' || true)
+
+if [ -n "$PKG_JSON_CHANGED" ] || [ -n "$PKG_LOCK_CHANGED" ]; then
+  echo "🔍 Validating package-lock.json sync..."
+  if ! npm ci --dry-run --silent 2>/dev/null; then
+    echo ""
+    echo "❌ package-lock.json is out of sync with package.json"
+    echo ""
+    npm ci --dry-run 2>&1 | head -15
+    echo ""
+    echo "📝 To fix:"
+    echo "   1. Run: npm install"
+    echo "   2. Review changes: git diff package-lock.json"
+    echo "   3. Stage the changes: git add package-lock.json"
+    echo "   4. Commit again"
+    echo ""
+    echo "   Or use: git commit --no-verify (not recommended - CI will fail)"
+    exit 1
+  fi
+  echo "✅ package-lock.json is in sync"
+  echo ""
+fi
+
 # Documentation sync reminder (non-blocking)
 SRC_CHANGED=$(git diff --cached --name-only | grep '^src/' || true)
 REF_CHANGED=$(git diff --cached --name-only | grep '^ref/' || true)
