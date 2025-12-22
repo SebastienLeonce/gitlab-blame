@@ -22,7 +22,15 @@ Runs on **every commit** to catch issues early:
    - Enforces: Type safety across entire codebase
    - Fails on: Type errors, missing types, incompatible assignments
 
-3. **Documentation Sync Reminder** (non-blocking)
+3. **package-lock.json Sync Validation** (~2-5 seconds)
+   - Triggers: When `package.json` or `package-lock.json` is modified
+   - Runs: `npm ci --dry-run` to verify sync
+   - Enforces: Lock file is in sync with package.json
+   - Fails on: Version mismatches, missing dependencies
+   - **Fix**: Run `npm install` to regenerate lock file
+   - **Why**: Prevents CI failures from out-of-sync dependencies
+
+4. **Documentation Sync Reminder** (non-blocking)
    - Triggers: When `src/` files changed but `ref/` or `CLAUDE.md` unchanged
    - Shows: Reminder to update relevant documentation
    - Action: User can press Enter to continue or Ctrl+C to abort and update docs
