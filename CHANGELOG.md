@@ -15,6 +15,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.2.0] - 2025-12-22
+
+### Added
+- **Centralized ErrorLogger Service** - New singleton service for consistent error logging across all components
+  - Provides `error()`, `warn()`, and `info()` methods with standardized format: `[Provider] Context: Message`
+  - Integrates with VS Code Output Channel for centralized logging
+  - Includes `reset()` method for test isolation
+  - All logging now uses ErrorLogger instead of direct `console.*` calls
+
+### Changed
+- **Enhanced Code Quality** - Strengthened ESLint configuration with additional rules:
+  - `no-console`: Enforced to prevent direct console usage (all logging through ErrorLogger)
+  - `no-magic-numbers`: Enforced to improve code readability
+  - `import/order`: Enforced for consistent import organization
+- **Constants Extraction** - Extracted magic numbers to named constants:
+  - `HTTP_STATUS`: HTTP status code constants (200, 401, 403, 404, 429)
+  - `TIME_CONSTANTS`: Time conversion constants (milliseconds per second/minute/hour)
+  - `UI_CONSTANTS`: UI-related constants (hover text limits, cache clearing messages)
+  - `BLAME_CONSTANTS`: Git blame parsing constants (minimum SHA length, uncommitted SHA)
+- **Error Handling Improvements** - Standardized error logging in `extension.ts` and `handleVcsError()`
+- **Documentation Updates** - Updated all code examples in `ref/patterns.md`, `ref/api/services.md`, and `CONTRIBUTING.md` to use ErrorLogger instead of `console.*`
+
+### Technical
+- Added dev dependencies: `eslint-plugin-import` and `eslint-import-resolver-typescript`
+- All code follows consistent logging patterns with centralized error management
+- Improved code maintainability with named constants and organized imports
+
 ## [1.1.0] - 2025-12-21
 
 ### Changed
