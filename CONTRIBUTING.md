@@ -67,6 +67,30 @@ npm run typecheck:watch   # TypeScript watch mode
 npm run validate          # Run all checks (lint + typecheck + coverage + build)
 ```
 
+**ESLint Rules** (16 rules enforced at error level):
+
+**Bug Prevention**:
+- `@typescript-eslint/no-floating-promises` - Catch unhandled promises
+- `@typescript-eslint/no-misused-promises` - Prevent promise misuse in conditionals
+- `@typescript-eslint/no-unnecessary-condition` - Flag always-true/false conditions
+- `import/named` - Verify named imports exist
+- `import/default` - Verify default imports exist
+
+**Code Consistency**:
+- `@typescript-eslint/naming-convention` - Enforce naming standards
+- `@typescript-eslint/no-unused-vars` - No unused variables
+- `@typescript-eslint/explicit-function-return-type` - Explicit return types on functions
+- `@typescript-eslint/no-magic-numbers` - No hardcoded numbers (use constants)
+- `curly` - Always use braces for control statements
+- `eqeqeq` - Use strict equality (===)
+- `no-throw-literal` - Only throw Error objects
+- `no-console` - No direct console usage (use ErrorLogger)
+- `import/order` - Alphabetically sorted imports
+- `import/no-duplicates` - No duplicate imports
+
+**Additional Plugins**:
+- `eslint-plugin-import` - Import/export validation and organization
+
 ### Git Hooks
 
 The project uses Husky for automated quality checks:
@@ -361,7 +385,7 @@ The project includes `.vscode/launch.json` for debugging:
 ### Debug Tips
 
 1. **Set breakpoints** in source files (not compiled `out/` files)
-2. **Use `console.log()`** for quick debugging (remove before commit)
+2. **Use `logger.info()`** for debugging output (logged to Output Channel)
 3. **Check Output panel** → "Git Blame MR/PR Link" for extension logs
 4. **Use Developer Tools** in Extension Development Host (`Help > Toggle Developer Tools`)
 

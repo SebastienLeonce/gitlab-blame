@@ -2,10 +2,14 @@
 
 [![CI](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml/badge.svg)](https://github.com/SebastienLeonce/gitlab-blame/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/sebastienleonce/gitlab-blame/branch/main/graph/badge.svg)](https://codecov.io/gh/sebastienleonce/gitlab-blame)
+
 [![VS Code Marketplace](https://img.shields.io/vscode-marketplace/v/sebastien-dev.gitlab-blame.svg?label=VS%20Code%20Marketplace&logo=visual-studio-code)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
-[![Open VSX](https://img.shields.io/open-vsx/v/sebastien-dev/gitlab-blame?label=Open%20VSX)](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
 [![Installs](https://img.shields.io/vscode-marketplace/i/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
 [![Rating](https://img.shields.io/vscode-marketplace/r/sebastien-dev.gitlab-blame.svg)](https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame)
+
+[![Open VSX](https://img.shields.io/open-vsx/v/sebastien-dev/gitlab-blame?label=Open%20VSX)](https://open-vsx.org/extension/sebastien-dev/gitlab-blame)
+![Open VSX installs](https://img.shields.io/open-vsx/dt/sebastien-dev/gitlab-blame)
+![Open VSX rating](https://img.shields.io/open-vsx/rating/sebastien-dev/gitlab-blame)
 
 Instantly see which Merge Request or Pull Request introduced any line of code - right in your git blame hover.
 

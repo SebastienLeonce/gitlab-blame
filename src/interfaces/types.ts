@@ -95,7 +95,7 @@ export interface VcsError {
   type: VcsErrorType;
   message: string;
   statusCode?: number;
-  shouldShowUI?: boolean;
+  shouldShowUI: boolean;
 }
 
 /**

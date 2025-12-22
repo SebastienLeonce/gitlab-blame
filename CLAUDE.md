@@ -251,6 +251,43 @@ Pre-commit hook will remind if `src/` changed but `ref/` didn't.
 
 ## Development Guidelines
 
+### Error Logging
+
+**Use the centralized ErrorLogger service for all logging** - Do NOT use `console.*` directly (enforced by ESLint `no-console` rule).
+
+```typescript
+import { logger } from "./services/ErrorLogger";
+
+// Error logging
+logger.error("Provider", "Context description", error);
+
+// Warning logging
+logger.warn("Provider", "Context description", message);
+
+// Info logging
+logger.info("Informational message");
+```
+
+**Format**: `[Provider] Context: Message`
+
+**Example**:
+```typescript
+try {
+  const result = await fetchData();
+} catch (error) {
+  logger.error("GitHub", "API request failed", error);
+}
+// Output: ERROR: [GitHub] API request failed: Network timeout
+```
+
+**Why**:
+- ✅ Consistent error format across all components
+- ✅ Centralized logging to VS Code Output Channel
+- ✅ Easier debugging (all logs in one place)
+- ✅ Enforced by ESLint `no-console` rule
+
+**📖 Full API documentation**: See `ref/api/services.md` §ErrorLogger
+
 ### Code Comments Philosophy
 
 **Core Principle: Comment the "WHY", not the "WHAT"**

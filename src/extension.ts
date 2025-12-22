@@ -1,13 +1,4 @@
 import * as vscode from "vscode";
-import { GitService } from "./services/GitService";
-import { CacheService } from "./services/CacheService";
-import { TokenService } from "./services/TokenService";
-import { VcsProviderFactory } from "./services/VcsProviderFactory";
-import { GitLabProvider } from "./providers/vcs/GitLabProvider";
-import { GitHubProvider } from "./providers/vcs/GitHubProvider";
-import { BlameHoverProvider } from "./providers/BlameHoverProvider";
-import { IVcsProvider } from "./interfaces/IVcsProvider";
-import { VcsError, VcsErrorType } from "./interfaces/types";
 import {
   CONFIG_KEYS,
   SECRET_KEYS,
@@ -15,6 +6,16 @@ import {
   DEFAULTS,
   VCS_PROVIDERS,
 } from "./constants";
+import { IVcsProvider } from "./interfaces/IVcsProvider";
+import { VcsError, VcsErrorType } from "./interfaces/types";
+import { BlameHoverProvider } from "./providers/BlameHoverProvider";
+import { GitHubProvider } from "./providers/vcs/GitHubProvider";
+import { GitLabProvider } from "./providers/vcs/GitLabProvider";
+import { CacheService } from "./services/CacheService";
+import { logger } from "./services/ErrorLogger";
+import { GitService } from "./services/GitService";
+import { TokenService } from "./services/TokenService";
+import { VcsProviderFactory } from "./services/VcsProviderFactory";
 
 // Extension-wide output channel for error logging
 let outputChannel: vscode.OutputChannel;
@@ -36,12 +37,19 @@ export async function activate(
   outputChannel = vscode.window.createOutputChannel("GitLab Blame");
   context.subscriptions.push(outputChannel);
 
+  // Initialize centralized error logger
+  logger.initialize(outputChannel);
+
   state.gitService = new GitService();
   const gitInitialized = await state.gitService.initialize();
 
   if (!gitInitialized) {
     const error = state.gitService.getInitializationError();
-    outputChannel.appendLine(`ERROR: Failed to initialize Git - ${error}`);
+    logger.error(
+      "Extension",
+      "Failed to initialize Git",
+      error || "Unknown error",
+    );
     void vscode.window.showErrorMessage(
       `GitLab Blame: Failed to initialize Git - ${error}`,
     );
@@ -157,15 +165,14 @@ export async function activate(
  * This is the central error handler called by BlameHoverProvider
  */
 function handleVcsError(error: VcsError, provider: IVcsProvider): void {
-  // Log all errors to Extension Host output
-  const logMessage = `[${provider.name}] ${error.type}${error.statusCode ? ` (${error.statusCode})` : ""}: ${error.message}`;
+  const context = `${error.type}${error.statusCode ? ` (${error.statusCode})` : ""}`;
 
   if (!error.shouldShowUI) {
-    outputChannel.appendLine(`WARNING: ${logMessage}`);
+    logger.warn(provider.name, context, error.message);
     return;
   }
 
-  outputChannel.appendLine(`ERROR: ${logMessage}`);
+  logger.error(provider.name, context, error.message);
 
   switch (error.type) {
     case VcsErrorType.NoToken:
@@ -207,7 +214,7 @@ function handleVcsError(error: VcsError, provider: IVcsProvider): void {
       break;
 
     default:
-      console.error(`${provider.name} error:`, error);
+      logger.error(provider.name, "Unknown error", error);
   }
 }
 

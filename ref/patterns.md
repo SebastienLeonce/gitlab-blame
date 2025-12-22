@@ -31,7 +31,7 @@ async function example(): Promise<Result | undefined> {
     const data = await fetchData();
     return processData(data);
   } catch (error) {
-    console.error("Error:", error);
+    logger.error("Service", "Failed to fetch data", error);
     return undefined;
   }
 }
@@ -492,6 +492,232 @@ const hoverProvider = new BlameHoverProvider(
 
 ---
 
+## Centralized Logging Pattern
+
+### ErrorLogger Service
+
+All error logging goes through the centralized `ErrorLogger` service for consistent formatting and Output Channel integration.
+
+**Location**: `src/services/ErrorLogger.ts`
+
+**Pattern**:
+```typescript
+import { logger } from "./services/ErrorLogger";
+
+// In extension.ts activation
+logger.initialize(outputChannel);
+
+// In services/providers
+logger.error("Provider", "Context description", error);
+logger.warn("Provider", "Context description", message);
+logger.info("Informational message");
+```
+
+**Format**: `[Provider] Context: Message`
+
+**Example Output**:
+```
+ERROR: [GitHub] API request failed: Network timeout
+ERROR: [GitLab] Failed to parse remote URL: Invalid format
+INFO: Cache cleared (15 entries)
+```
+
+**Why**:
+- ✅ Consistent error format across all components
+- ✅ Centralized logging to VS Code Output Channel
+- ✅ Easier debugging (all logs in one place)
+- ✅ Avoids direct `console.*` usage (enforced by ESLint `no-console` rule)
+
+**Singleton Pattern**:
+```typescript
+export class ErrorLogger {
+  private static instance: ErrorLogger | undefined;
+
+  static getInstance(): ErrorLogger {
+    if (!ErrorLogger.instance) {
+      ErrorLogger.instance = new ErrorLogger();
+    }
+    return ErrorLogger.instance;
+  }
+}
+
+export const logger = ErrorLogger.getInstance();
+```
+
+---
+
+## Regex Constants Pattern
+
+Extract all regex patterns to named constants with JSDoc documentation.
+
+**Why**:
+- ✅ Self-documenting regex (JSDoc explains what it matches)
+- ✅ Reusable across multiple functions
+- ✅ Easier to test and maintain
+- ✅ Clear intent vs. inline regex
+
+### Git Remote URL Patterns
+
+**Location**: `src/utils/remoteParser.ts`
+
+```typescript
+/**
+ * Git remote URL parsing patterns
+ */
+export const GIT_REMOTE_PATTERNS = {
+  /**
+   * SSH format: git@hostname:path/to/project.git
+   * Groups: [full, hostname, projectPath]
+   * @example git@gitlab.com:group/project.git
+   */
+  SSH_FULL: /^git@([^:]+):(.+?)(?:\.git)?$/,
+
+  /**
+   * SSH hostname extraction: git@hostname:...
+   * @example git@github.com:owner/repo.git → github.com
+   */
+  SSH_HOST: /^git@([^:]+):/,
+} as const;
+
+// Usage
+const match = remoteUrl.match(GIT_REMOTE_PATTERNS.SSH_FULL);
+if (match) {
+  const [, hostname, projectPath] = match;
+}
+```
+
+### Git Blame Patterns
+
+**Location**: `src/services/GitService.ts`
+
+```typescript
+/**
+ * Git blame output parsing patterns
+ */
+const GIT_BLAME_PATTERNS = {
+  /**
+   * Standard git blame format:
+   * ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
+   * Groups: [full, sha, author, date, time, timezone, lineNum, content]
+   * @example d01a7c049 (lsidoree 2025-07-09 17:57:39 +0200 1) import {
+   * @example ^abc1234  (Another Author 2024-01-15 10:30:00 +0000 42) const x = 1;
+   */
+  STANDARD_FORMAT:
+    /^\^?([a-f0-9]+)\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{4})\s+(\d+)\)\s?(.*)$/,
+
+  /**
+   * Uncommitted changes indicator (all zeros SHA)
+   * @example 0000000000 - indicates uncommitted changes
+   */
+  UNCOMMITTED_SHA: /^0+$/,
+} as const;
+```
+
+---
+
+## HTTP Status Constants Pattern
+
+Extract all HTTP status codes to named constants.
+
+**Why**:
+- ✅ No magic numbers
+- ✅ Self-documenting (clear intent)
+- ✅ Enforced by ESLint `@typescript-eslint/no-magic-numbers` rule
+
+**Location**: `src/constants.ts`
+
+```typescript
+/**
+ * HTTP status codes used in VCS API error handling
+ */
+export const HTTP_STATUS = {
+  UNAUTHORIZED: 401,
+  FORBIDDEN: 403,
+  NOT_FOUND: 404,
+  TOO_MANY_REQUESTS: 429,
+} as const;
+```
+
+**Usage in Providers**:
+```typescript
+import { HTTP_STATUS } from "../../constants";
+
+private handleApiError(statusCode: number): VcsResult<MergeRequest | null> {
+  switch (statusCode) {
+    case HTTP_STATUS.UNAUTHORIZED:
+    case HTTP_STATUS.FORBIDDEN:
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.InvalidToken,
+          message: "Invalid or expired token",
+          statusCode,
+          shouldShowUI: true,
+        },
+      };
+
+    case HTTP_STATUS.NOT_FOUND:
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.NotFound,
+          message: "Repository or commit not found",
+          statusCode,
+          shouldShowUI: false,
+        },
+      };
+
+    case HTTP_STATUS.TOO_MANY_REQUESTS:
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.RateLimited,
+          message: "API rate limited",
+          statusCode,
+          shouldShowUI: false,
+        },
+      };
+  }
+}
+```
+
+### Other Constant Groups
+
+**Time Constants** (for relative date formatting):
+```typescript
+export const TIME_CONSTANTS = {
+  MS_PER_SECOND: 1000,
+  SECONDS_PER_MINUTE: 60,
+  MINUTES_PER_HOUR: 60,
+  HOURS_PER_DAY: 24,
+  DAYS_PER_WEEK: 7,
+  DAYS_PER_MONTH: 30,
+  DAYS_PER_YEAR: 365,
+  MONTHS_PER_YEAR: 12,
+  WEEKS_PER_MONTH: 4,
+} as const;
+```
+
+**UI Constants** (for display formatting):
+```typescript
+export const UI_CONSTANTS = {
+  MAX_TITLE_LENGTH: 50,
+  MAX_PICKER_ITEMS: 7,
+  ELLIPSIS_LENGTH: 3,
+  SHORT_SHA_LENGTH: 7,
+} as const;
+```
+
+**Git Blame Constants**:
+```typescript
+export const BLAME_CONSTANTS = {
+  /** Git blame uses 1-based line numbering */
+  LINE_NUMBER_OFFSET: 1,
+} as const;
+```
+
+---
+
 ## Error Handling Patterns
 
 ### Graceful Degradation
@@ -501,7 +727,7 @@ async function getData(): Promise<Data | undefined> {
   try {
     return await fetchFromApi();
   } catch (error) {
-    console.error("API error:", error);
+    logger.error("API", "Failed to fetch data", error);
     return undefined; // Return undefined, don't throw
   }
 }
@@ -537,10 +763,10 @@ private handleApiError(statusCode: number): void {
       break;
     case 429:
       // Rate limited - log warning
-      console.warn("Rate limited");
+      logger.warn("API", "Rate limit exceeded", `Status code: ${statusCode}`);
       break;
     default:
-      console.error(`API error ${statusCode}`);
+      logger.error("API", "Request failed", `Status code: ${statusCode}`);
   }
 }
 ```

@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { MergeRequest, GitAPI, Repository } from "../interfaces/types";
+import { CONFIG_KEYS, DEFAULTS, TIME_CONSTANTS } from "../constants";
 import { ICacheService } from "../interfaces/ICacheService";
-import { CONFIG_KEYS, DEFAULTS } from "../constants";
+import { MergeRequest, GitAPI, Repository } from "../interfaces/types";
 
 interface CacheEntry {
   value: MergeRequest | null;
@@ -24,7 +24,7 @@ export class CacheService implements ICacheService {
       CONFIG_KEYS.CACHE_TTL,
       DEFAULTS.CACHE_TTL_SECONDS,
     );
-    this.ttlMs = ttlSeconds * 1000;
+    this.ttlMs = ttlSeconds * TIME_CONSTANTS.MS_PER_SECOND;
   }
 
   /**
@@ -55,7 +55,7 @@ export class CacheService implements ICacheService {
             CONFIG_KEYS.CACHE_TTL,
             DEFAULTS.CACHE_TTL_SECONDS,
           );
-          this.ttlMs = ttlSeconds * 1000;
+          this.ttlMs = ttlSeconds * TIME_CONSTANTS.MS_PER_SECOND;
         }
       }),
     );

@@ -1,3 +1,4 @@
+import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "../../constants";
 import { IVcsProvider } from "../../interfaces/IVcsProvider";
 import {
   MergeRequest,
@@ -6,7 +7,7 @@ import {
   VcsErrorType,
   GitHubPR,
 } from "../../interfaces/types";
-import { VCS_PROVIDERS, DEFAULTS } from "../../constants";
+import { logger } from "../../services/ErrorLogger";
 import { parseGitHubRemote, isGitHubRemote } from "../../utils/remoteParser";
 
 /**
@@ -133,7 +134,7 @@ export class GitHubProvider implements IVcsProvider {
       const selectedPr = this.selectPullRequest(prs);
       return { success: true, data: selectedPr };
     } catch (error) {
-      console.error("[GitHub] API request failed:", error);
+      logger.error("GitHub", "API request failed", error);
       let errorMessage = "Network error";
       if (error instanceof Error) {
         errorMessage = error.message;
@@ -195,8 +196,8 @@ export class GitHubProvider implements IVcsProvider {
    */
   private handleApiError(statusCode: number): VcsResult<MergeRequest | null> {
     switch (statusCode) {
-      case 401:
-      case 403: {
+      case HTTP_STATUS.UNAUTHORIZED:
+      case HTTP_STATUS.FORBIDDEN: {
         const shouldShow = !this.hasShownTokenError;
         this.hasShownTokenError = true;
         return {
@@ -210,7 +211,7 @@ export class GitHubProvider implements IVcsProvider {
         };
       }
 
-      case 404:
+      case HTTP_STATUS.NOT_FOUND:
         return {
           success: false,
           error: {
@@ -221,7 +222,7 @@ export class GitHubProvider implements IVcsProvider {
           },
         };
 
-      case 429:
+      case HTTP_STATUS.TOO_MANY_REQUESTS:
         return {
           success: false,
           error: {
@@ -332,8 +333,9 @@ export class GitHubProvider implements IVcsProvider {
 
       return null;
     } catch (error) {
-      console.error(
-        `[GitHub] Failed to get PR number from commit message:`,
+      logger.error(
+        "GitHub",
+        "Failed to get PR number from commit message",
         error,
       );
       return null;
@@ -364,7 +366,7 @@ export class GitHubProvider implements IVcsProvider {
       const pr: GitHubPR = (await response.json()) as GitHubPR;
       return this.mapToPullRequest(pr);
     } catch (error) {
-      console.error(`[GitHub] Failed to fetch PR #${prNumber}:`, error);
+      logger.error("GitHub", `Failed to fetch PR #${prNumber}`, error);
       return null;
     }
   }

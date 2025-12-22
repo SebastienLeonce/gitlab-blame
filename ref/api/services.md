@@ -198,6 +198,117 @@ Check if a token exists for a provider.
 
 ---
 
+## ErrorLogger
+
+**Location**: `src/services/ErrorLogger.ts`
+
+Centralized error logging service with VS Code Output Channel integration. Provides consistent error formatting across all components.
+
+### Singleton Pattern
+
+```typescript
+import { logger } from "./services/ErrorLogger";
+```
+
+The `logger` export is a singleton instance that should be used throughout the extension.
+
+### Methods
+
+#### `initialize(outputChannel: vscode.OutputChannel): void`
+
+Initialize the logger with a VS Code Output Channel.
+
+**Parameters**:
+- `outputChannel`: VS Code OutputChannel instance for logging
+
+**Example**:
+```typescript
+import { logger } from "./services/ErrorLogger";
+
+// In extension.ts activation
+const outputChannel = vscode.window.createOutputChannel("Extension Name");
+logger.initialize(outputChannel);
+```
+
+**Important**: Must be called during extension activation before any logging occurs.
+
+#### `error(provider: string, context: string, error: unknown): void`
+
+Log an error with consistent formatting.
+
+**Parameters**:
+- `provider`: Provider/service name (e.g., "GitHub", "GitLab", "Git")
+- `context`: Brief description of what failed (e.g., "API request failed")
+- `error`: The error object (any type)
+
+**Format**: `ERROR: [Provider] Context: Message`
+
+**Example**:
+```typescript
+try {
+  await fetchData();
+} catch (error) {
+  logger.error("GitHub", "API request failed", error);
+}
+```
+
+**Output**:
+```
+ERROR: [GitHub] API request failed: Network timeout
+```
+
+#### `warn(provider: string, context: string, message: string): void`
+
+Log a warning message.
+
+**Parameters**:
+- `provider`: Provider/service name
+- `context`: Brief description
+- `message`: Warning message
+
+**Format**: `WARN: [Provider] Context: Message`
+
+**Example**:
+```typescript
+logger.warn("Cache", "TTL configuration", "Cache disabled (TTL = 0)");
+```
+
+#### `info(message: string): void`
+
+Log an informational message.
+
+**Parameters**:
+- `message`: Info message
+
+**Example**:
+```typescript
+logger.info("Cache cleared (15 entries)");
+```
+
+### Why Use ErrorLogger?
+
+- ✅ **Consistent Format**: All logs follow `[Provider] Context: Message` format
+- ✅ **Output Channel Integration**: Logs appear in VS Code Output panel
+- ✅ **Centralized**: Single place to modify logging behavior
+- ✅ **ESLint Compliance**: Avoids direct `console.*` usage (enforced by `no-console` rule)
+- ✅ **Easier Debugging**: All logs in one place with consistent formatting
+
+### ESLint Configuration
+
+The `no-console` ESLint rule is enforced to prevent direct console usage:
+
+```json
+{
+  "rules": {
+    "no-console": "error"
+  }
+}
+```
+
+All code (including `ErrorLogger`) must avoid using `console.*` directly. All logging goes through the VS Code Output Channel.
+
+---
+
 ## CacheService
 
 **Location**: `src/services/CacheService.ts`

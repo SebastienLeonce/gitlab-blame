@@ -1,3 +1,4 @@
+import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "../../constants";
 import { IVcsProvider } from "../../interfaces/IVcsProvider";
 import {
   MergeRequest,
@@ -6,7 +7,7 @@ import {
   VcsErrorType,
   GitLabMR,
 } from "../../interfaces/types";
-import { VCS_PROVIDERS, DEFAULTS } from "../../constants";
+import { logger } from "../../services/ErrorLogger";
 import { parseGitLabRemote, isGitLabRemote } from "../../utils/remoteParser";
 
 /**
@@ -104,7 +105,7 @@ export class GitLabProvider implements IVcsProvider {
       const selectedMr = this.selectMergeRequest(mrs);
       return { success: true, data: selectedMr };
     } catch (error) {
-      console.error("GitLab API request failed:", error);
+      logger.error("GitLab", "API request failed", error);
       return {
         success: false,
         error: {
@@ -162,8 +163,8 @@ export class GitLabProvider implements IVcsProvider {
    */
   private handleApiError(statusCode: number): VcsResult<MergeRequest | null> {
     switch (statusCode) {
-      case 401:
-      case 403: {
+      case HTTP_STATUS.UNAUTHORIZED:
+      case HTTP_STATUS.FORBIDDEN: {
         const shouldShow = !this.hasShownTokenError;
         this.hasShownTokenError = true;
         return {
@@ -177,7 +178,7 @@ export class GitLabProvider implements IVcsProvider {
         };
       }
 
-      case 404:
+      case HTTP_STATUS.NOT_FOUND:
         return {
           success: false,
           error: {
@@ -188,7 +189,7 @@ export class GitLabProvider implements IVcsProvider {
           },
         };
 
-      case 429:
+      case HTTP_STATUS.TOO_MANY_REQUESTS:
         return {
           success: false,
           error: {

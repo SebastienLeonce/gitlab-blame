@@ -1,9 +1,10 @@
 import * as vscode from "vscode";
-import { GitService } from "../services/GitService";
-import { VcsProviderFactory } from "../services/VcsProviderFactory";
+import { TIME_CONSTANTS, UI_CONSTANTS } from "../constants";
 import { ICacheService } from "../interfaces/ICacheService";
 import { IVcsProvider } from "../interfaces/IVcsProvider";
 import { MergeRequest, BlameInfo, VcsError } from "../interfaces/types";
+import { GitService } from "../services/GitService";
+import { VcsProviderFactory } from "../services/VcsProviderFactory";
 
 /**
  * Callback for handling VCS errors with UI
@@ -15,7 +16,6 @@ export type VcsErrorHandler = (error: VcsError, provider: IVcsProvider) => void;
  * Works with any VCS provider (GitLab, GitHub, etc.) via VcsProviderFactory
  */
 export class BlameHoverProvider implements vscode.HoverProvider {
-  private static readonly MR_TITLE_MAX_LENGTH = 50;
   private pendingRequests = new Map<string, Promise<MergeRequest | null>>();
 
   constructor(
@@ -50,10 +50,6 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       token,
     );
 
-    if (token.isCancellationRequested) {
-      return null;
-    }
-
     return new vscode.Hover(content);
   }
 
@@ -78,7 +74,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       md.appendMarkdown(`*Loading merge request...*\n\n`);
     }
 
-    const shortSha = blameInfo.sha.substring(0, 7);
+    const shortSha = blameInfo.sha.substring(0, UI_CONSTANTS.SHORT_SHA_LENGTH);
     const dateStr = this.formatRelativeDate(blameInfo.date);
     md.appendMarkdown(
       `\`${shortSha}\` by ${this.escapeMarkdown(blameInfo.author)} • ${dateStr}`,
@@ -194,25 +190,25 @@ export class BlameHoverProvider implements vscode.HoverProvider {
   private formatRelativeDate(date: Date): string {
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / 1000);
-    const diffMin = Math.floor(diffSec / 60);
-    const diffHour = Math.floor(diffMin / 60);
-    const diffDay = Math.floor(diffHour / 24);
-    const diffWeek = Math.floor(diffDay / 7);
-    const diffMonth = Math.floor(diffDay / 30);
-    const diffYear = Math.floor(diffDay / 365);
+    const diffSec = Math.floor(diffMs / TIME_CONSTANTS.MS_PER_SECOND);
+    const diffMin = Math.floor(diffSec / TIME_CONSTANTS.SECONDS_PER_MINUTE);
+    const diffHour = Math.floor(diffMin / TIME_CONSTANTS.MINUTES_PER_HOUR);
+    const diffDay = Math.floor(diffHour / TIME_CONSTANTS.HOURS_PER_DAY);
+    const diffWeek = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_WEEK);
+    const diffMonth = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_MONTH);
+    const diffYear = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_YEAR);
 
-    if (diffSec < 60) {
+    if (diffSec < TIME_CONSTANTS.SECONDS_PER_MINUTE) {
       return "just now";
-    } else if (diffMin < 60) {
+    } else if (diffMin < TIME_CONSTANTS.MINUTES_PER_HOUR) {
       return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
-    } else if (diffHour < 24) {
+    } else if (diffHour < TIME_CONSTANTS.HOURS_PER_DAY) {
       return `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
-    } else if (diffDay < 7) {
+    } else if (diffDay < TIME_CONSTANTS.DAYS_PER_WEEK) {
       return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
-    } else if (diffWeek < 4) {
+    } else if (diffWeek < TIME_CONSTANTS.WEEKS_PER_MONTH) {
       return `${diffWeek} week${diffWeek === 1 ? "" : "s"} ago`;
-    } else if (diffMonth < 12) {
+    } else if (diffMonth < TIME_CONSTANTS.MONTHS_PER_YEAR) {
       return `${diffMonth} month${diffMonth === 1 ? "" : "s"} ago`;
     } else {
       return `${diffYear} year${diffYear === 1 ? "" : "s"} ago`;
@@ -240,13 +236,15 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     const prefix = `!${mr.iid} `;
     const fullText = prefix + mr.title;
 
-    if (fullText.length <= BlameHoverProvider.MR_TITLE_MAX_LENGTH) {
+    if (fullText.length <= UI_CONSTANTS.MAX_TITLE_LENGTH) {
       return `[${this.escapeMarkdown(fullText)}](${mr.webUrl})`;
     }
 
     // Truncate title only, preserving full MR number
     const availableForTitle =
-      BlameHoverProvider.MR_TITLE_MAX_LENGTH - prefix.length - 3;
+      UI_CONSTANTS.MAX_TITLE_LENGTH -
+      prefix.length -
+      UI_CONSTANTS.ELLIPSIS_LENGTH;
     const truncatedTitle =
       mr.title.substring(0, Math.max(0, availableForTitle)) + "...";
     const truncatedText = prefix + truncatedTitle;

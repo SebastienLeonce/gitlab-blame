@@ -1,6 +1,29 @@
 import * as vscode from "vscode";
-import { GitExtension, API, Repository } from "../types/git";
+import { BLAME_CONSTANTS } from "../constants";
 import { BlameInfo } from "../types";
+import { GitExtension, API, Repository } from "../types/git";
+import { logger } from "./ErrorLogger";
+
+/**
+ * Git blame output parsing patterns
+ */
+const GIT_BLAME_PATTERNS = {
+  /**
+   * Standard git blame format:
+   * ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
+   * Groups: [full, sha, author, date, time, timezone, lineNum, content]
+   * @example d01a7c049 (lsidoree 2025-07-09 17:57:39 +0200 1) import {
+   * @example ^abc1234  (Another Author 2024-01-15 10:30:00 +0000 42) const x = 1;
+   */
+  STANDARD_FORMAT:
+    /^\^?([a-f0-9]+)\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{4})\s+(\d+)\)\s?(.*)$/,
+
+  /**
+   * Uncommitted changes indicator (all zeros SHA)
+   * @example 0000000000 - indicates uncommitted changes
+   */
+  UNCOMMITTED_SHA: /^0+$/,
+} as const;
 
 /**
  * Service for interacting with Git via VS Code's built-in Git extension
@@ -108,9 +131,9 @@ export class GitService {
     try {
       const blameOutput = await repo.blame(uri.fsPath);
       const blameMap = this.parseBlameOutput(blameOutput);
-      return blameMap.get(line + 1); // git blame uses 1-based line numbers
+      return blameMap.get(line + BLAME_CONSTANTS.LINE_NUMBER_OFFSET);
     } catch (error) {
-      console.error("GitLab Blame: Error getting blame info:", error);
+      logger.error("Git", "Error getting blame info", error);
       return undefined;
     }
   }
@@ -132,7 +155,7 @@ export class GitService {
       const blameOutput = await repo.blame(uri.fsPath);
       return this.parseBlameOutput(blameOutput);
     } catch (error) {
-      console.error("GitLab Blame: Error getting blame info:", error);
+      logger.error("Git", "Error getting blame info for file", error);
       return undefined;
     }
   }
@@ -168,14 +191,8 @@ export class GitService {
     const result = new Map<number, BlameInfo>();
     const lines = output.split("\n");
 
-    // Standard blame format regex:
-    // ^?<sha> (<author> <date> <time> <timezone> <line>) <content>
-    // The author field is right-padded with spaces to align the date
-    const blameRegex =
-      /^\^?([a-f0-9]+)\s+\((.+?)\s+(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2}:\d{2})\s+([+-]\d{4})\s+(\d+)\)\s?(.*)$/;
-
     for (const line of lines) {
-      const match = line.match(blameRegex);
+      const match = line.match(GIT_BLAME_PATTERNS.STANDARD_FORMAT);
       if (!match) {
         continue;
       }
@@ -183,8 +200,8 @@ export class GitService {
       const [, sha, author, date, time, , lineNumStr] = match;
       const lineNum = parseInt(lineNumStr, 10);
 
-      // Check for uncommitted changes (all zeros SHA or very short SHA)
-      const isUncommitted = /^0+$/.test(sha);
+      // Check for uncommitted changes (all zeros SHA)
+      const isUncommitted = GIT_BLAME_PATTERNS.UNCOMMITTED_SHA.test(sha);
 
       if (!isUncommitted && sha && author && lineNum) {
         const dateTime = new Date(`${date}T${time}`);

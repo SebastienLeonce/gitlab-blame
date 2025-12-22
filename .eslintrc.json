@@ -6,15 +6,18 @@
     "sourceType": "module",
     "project": "./tsconfig.json"
   },
-  "plugins": ["@typescript-eslint"],
+  "plugins": ["@typescript-eslint", "import"],
   "extends": [
     "eslint:recommended",
     "plugin:@typescript-eslint/recommended",
-    "plugin:@typescript-eslint/recommended-requiring-type-checking"
+    "plugin:@typescript-eslint/recommended-requiring-type-checking",
+    "plugin:import/errors",
+    "plugin:import/warnings",
+    "plugin:import/typescript"
   ],
   "rules": {
     "@typescript-eslint/naming-convention": [
-      "warn",
+      "error",
       {
         "selector": "import",
         "format": ["camelCase", "PascalCase"]
@@ -24,9 +27,71 @@
       "error",
       { "argsIgnorePattern": "^_" }
     ],
-    "curly": "warn",
-    "eqeqeq": "warn",
-    "no-throw-literal": "warn"
+    "curly": "error",
+    "eqeqeq": "error",
+    "no-throw-literal": "error",
+
+    "import/order": [
+      "error",
+      {
+        "groups": [
+          "builtin",
+          "external",
+          "internal",
+          "parent",
+          "sibling",
+          "index"
+        ],
+        "newlines-between": "never",
+        "alphabetize": { "order": "asc", "caseInsensitive": true }
+      }
+    ],
+    "import/no-duplicates": "error",
+    "import/named": "error",
+    "import/default": "error",
+
+    "@typescript-eslint/no-floating-promises": "error",
+    "@typescript-eslint/no-misused-promises": "error",
+
+    "@typescript-eslint/no-unnecessary-condition": "error",
+
+    "no-console": "error",
+
+    "@typescript-eslint/explicit-function-return-type": [
+      "error",
+      {
+        "allowExpressions": true,
+        "allowTypedFunctionExpressions": true,
+        "allowHigherOrderFunctions": true,
+        "allowDirectConstAssertionInArrowFunctions": true
+      }
+    ],
+
+    "@typescript-eslint/no-magic-numbers": [
+      "error",
+      {
+        "ignore": [0, 1, -1],
+        "ignoreArrayIndexes": true,
+        "ignoreDefaultValues": true,
+        "ignoreEnums": true,
+        "enforceConst": true,
+        "detectObjects": false
+      }
+    ]
+  },
+  "settings": {
+    "import/resolver": {
+      "typescript": {
+        "alwaysTryTypes": true,
+        "project": "./tsconfig.json"
+      },
+      "node": {
+        "extensions": [".js", ".ts"]
+      }
+    },
+    "import/parsers": {
+      "@typescript-eslint/parser": [".ts"]
+    }
   },
   "ignorePatterns": ["out", "dist", "**/*.d.ts", "node_modules"]
 }

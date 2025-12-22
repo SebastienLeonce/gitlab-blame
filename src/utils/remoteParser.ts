@@ -2,6 +2,25 @@
  * Utilities for parsing git remote URLs to extract VCS project information
  */
 
+/**
+ * Git remote URL parsing patterns
+ */
+export const GIT_REMOTE_PATTERNS = {
+  /**
+   * SSH format: git@hostname:path/to/project.git
+   * Groups: [full, hostname, projectPath]
+   * @example git@gitlab.com:group/project.git
+   */
+  SSH_FULL: /^git@([^:]+):(.+?)(?:\.git)?$/,
+
+  /**
+   * SSH hostname extraction: git@hostname:...
+   * Groups: [full, hostname]
+   * @example git@github.com:owner/repo.git -> captures "github.com"
+   */
+  SSH_HOST: /^git@([^:]+):/,
+} as const;
+
 export interface GitLabRemoteInfo {
   host: string;
   projectPath: string;
@@ -36,7 +55,7 @@ export interface GitHubRemoteInfo {
  */
 export function parseGitLabRemote(remoteUrl: string): GitLabRemoteInfo | null {
   // SSH format: git@gitlab.example.com:group/subgroup/project.git
-  const sshMatch = remoteUrl.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+  const sshMatch = remoteUrl.match(GIT_REMOTE_PATTERNS.SSH_FULL);
   if (sshMatch) {
     const [, host, path] = sshMatch;
     return {
@@ -87,7 +106,7 @@ export function extractProjectPath(remoteUrl: string): string | null {
  */
 export function isGitLabRemote(remoteUrl: string): boolean {
   // Check for gitlab in the hostname (SSH format)
-  const sshMatch = remoteUrl.match(/^git@([^:]+):/);
+  const sshMatch = remoteUrl.match(GIT_REMOTE_PATTERNS.SSH_HOST);
   if (sshMatch) {
     const host = sshMatch[1].toLowerCase();
     return host.includes("gitlab");
@@ -126,7 +145,7 @@ export function isGitLabRemote(remoteUrl: string): boolean {
  */
 export function parseGitHubRemote(remoteUrl: string): GitHubRemoteInfo | null {
   // SSH format: git@github.com:owner/repo.git
-  const sshMatch = remoteUrl.match(/^git@([^:]+):(.+?)(?:\.git)?$/);
+  const sshMatch = remoteUrl.match(GIT_REMOTE_PATTERNS.SSH_FULL);
   if (sshMatch) {
     const [, hostname, path] = sshMatch;
     return {
@@ -165,7 +184,7 @@ export function parseGitHubRemote(remoteUrl: string): GitHubRemoteInfo | null {
  */
 export function isGitHubRemote(remoteUrl: string): boolean {
   // Check for github in the hostname (SSH format)
-  const sshMatch = remoteUrl.match(/^git@([^:]+):/);
+  const sshMatch = remoteUrl.match(GIT_REMOTE_PATTERNS.SSH_HOST);
   if (sshMatch) {
     const host = sshMatch[1].toLowerCase();
     return host.includes("github");
