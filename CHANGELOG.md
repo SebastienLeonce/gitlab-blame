@@ -15,6 +15,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.3.0] - 2025-12-24
+
+### Added
+- **Inline MR/PR Annotations** - New display mode showing MR/PR links as end-of-line decorations
+  - Three display modes: `hover` (tooltip only), `inline` (annotations only), `both`
+  - Toggle via command palette: "Git Blame: Toggle Display Mode"
+  - Configurable via `gitlabBlame.displayMode` setting
+
+### Changed
+- Default display mode changed to `inline` for immediate visibility
+
+### Technical
+- Added package-lock.json sync validation to pre-commit hooks
+
 ## [1.2.0] - 2025-12-22
 
 ### Added
