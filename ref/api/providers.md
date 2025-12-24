@@ -481,3 +481,197 @@ context.subscriptions.push(
 ```
 
 The `{ scheme: "file" }` selector means the provider is active for all files in the filesystem (not virtual documents, untitled files, etc.).
+
+---
+
+## BlameDecorationProvider
+
+**Location**: `src/providers/BlameDecorationProvider.ts`
+
+Provides inline end-of-line decorations showing MR/PR links directly in the editor. Activated conditionally based on `displayMode` setting.
+
+### Constructor
+
+```typescript
+constructor(
+  gitService: GitService,
+  vcsProviderFactory: VcsProviderFactory,
+  cacheService: ICacheService,
+  onVcsError?: VcsErrorHandler
+)
+```
+
+**Parameters**:
+- `gitService`: Git service for blame operations
+- `vcsProviderFactory`: Factory for VCS provider detection
+- `cacheService`: Cache service implementing `ICacheService`
+- `onVcsError`: Optional callback for handling VCS errors with UI
+
+### Lifecycle Methods
+
+#### `activate(): void`
+
+Activates the decoration provider by registering event listeners and updating the active editor.
+
+**When called**: Conditionally in extension activation when `displayMode` is `"inline"` or `"both"`.
+
+**What it does**:
+- Registers `onDidChangeActiveTextEditor` listener (immediate update)
+- Registers `onDidChangeTextDocument` listener (debounced 500ms)
+- Updates decorations for current active editor
+
+#### `dispose(): void`
+
+Disposes all resources (decoration type, event listeners, timers).
+
+### Internal Methods
+
+#### `initialUpdateWithRetry(attempt): Promise<void>`
+
+Handles initial decoration update with retry logic for git initialization race condition.
+
+**Why needed**: Git repositories may not be fully loaded when extension activates, even after `api.state === "initialized"`.
+
+**Algorithm**:
+1. Check if active editor exists
+2. Try to get remote URL
+3. If no remote URL and attempts < MAX_INIT_RETRIES (3), retry after INIT_RETRY_DELAY_MS (500ms)
+4. Otherwise, proceed to `updateDecorations()`
+
+#### `handleCursorMovement(event): void`
+
+Handles cursor movement events to update decoration on active line.
+
+**Flow**:
+1. Defensive check for empty selections
+2. Get active line from selection
+3. Skip if line unchanged (prevents redundant updates)
+4. Clear any existing debounce timer
+5. Schedule `updateActiveLineDecoration()` with 100ms debounce
+
+**Note**: Does NOT set `lastActiveLine` - that's only done in `updateActiveLineDecoration()` after successful completion.
+
+#### `updateActiveLineDecoration(editor): Promise<void>`
+
+Updates decoration for the active line (cursor position).
+
+**Flow**:
+1. Clear all existing decorations
+2. Get remote URL and detect provider
+3. Get blame for active line only (fast single-line operation)
+4. Check cache first (fastest path)
+5. If cache miss, fetch from API
+6. Apply decoration if MR found
+7. Set `lastActiveLine` only after successful completion
+
+**Key behavior**: `lastActiveLine` is only set at the end, after successful completion. This ensures that if the operation fails (e.g., git not ready), the next cursor event will retry.
+
+#### `updateDecorations(document): Promise<void>`
+
+Wrapper that calls `updateActiveLineDecoration()` for the active editor.
+
+#### `createDecoration(lineNum, mr, provider): DecorationOptions`
+
+Creates a single decoration for a line with an MR.
+
+**Format**:
+- **GitLab**: `!123` (exclamation mark + MR IID)
+- **GitHub**: `#456` (hash + PR number)
+
+**Structure**:
+```typescript
+{
+  range: new vscode.Range(line, MAX_SAFE_INTEGER, line, MAX_SAFE_INTEGER),
+  hoverMessage: new vscode.MarkdownString(
+    `[!123: Fix login bug](https://gitlab.com/...)`
+  ),
+  renderOptions: {
+    after: {
+      contentText: "!123"
+    }
+  }
+}
+```
+
+**Hover Message**: Provides clickable link when hovering over decoration (workaround for non-clickable decorations).
+
+**Styling**: Decoration type uses:
+```typescript
+{
+  after: {
+    color: new vscode.ThemeColor('editorCodeLens.foreground'),
+    fontStyle: 'italic',
+    margin: '0 0 0 1em',
+  }
+}
+```
+
+#### `scheduleUpdate(document): void`
+
+Schedules a debounced decoration update for a document.
+
+**Debounce**: 500ms delay to prevent excessive updates during rapid file edits.
+
+#### `escapeMarkdown(text: string): string`
+
+Escapes special markdown characters in MR titles.
+
+**Escaped characters**: `\` `` ` `` `*` `_` `{` `}` `[` `]` `(` `)` `#` `+` `-` `.` `!`
+
+### Display Modes
+
+The decoration provider is conditionally activated based on `gitlabBlame.displayMode`:
+
+| Mode | Hover Provider | Decoration Provider |
+|------|----------------|---------------------|
+| `hover` | ✓ Active | ✗ Inactive |
+| `inline` | ✗ Inactive | ✓ Active |
+| `both` | ✓ Active | ✓ Active |
+
+**Changing display mode**: Requires window reload to re-register providers.
+
+### Performance Characteristics
+
+**Active Line Only**:
+- Only fetches MR for current cursor line (fast single-line operation)
+- Instant response on cache hit (<100ms)
+- API fetch on cache miss (~300ms)
+- Debouncing (100ms cursor, 500ms document) prevents excessive updates
+
+**Shared Cache**:
+- Both hover and decoration providers use same `CacheService`
+- No duplicate API calls (hover caches, inline reuses)
+- Cache key format: `{providerId}:{sha}` (prevents GitLab/GitHub collisions)
+
+**Initialization Retry**:
+- Handles git initialization race condition
+- Up to 3 retries with 500ms delay
+- Ensures decoration appears even if git isn't immediately ready
+
+### Usage Example
+
+Activated in `extension.ts`:
+
+```typescript
+const decorationProvider = new BlameDecorationProvider(
+  gitService,
+  vcsProviderFactory,
+  cacheService,
+  handleVcsError
+);
+
+const displayMode = config.get<string>(
+  CONFIG_KEYS.DISPLAY_MODE,
+  DEFAULTS.DISPLAY_MODE
+);
+
+// Conditionally activate
+if (displayMode === DISPLAY_MODES.INLINE || displayMode === DISPLAY_MODES.BOTH) {
+  decorationProvider.activate();
+}
+
+// Cleanup on deactivate
+export function deactivate(): void {
+  decorationProvider?.dispose();
+}
+```

@@ -61,6 +61,10 @@
       {
         "command": "gitlabBlame.showStatus",
         "title": "Git Blame: Show Status"
+      },
+      {
+        "command": "gitlabBlame.toggleDisplayMode",
+        "title": "Git Blame: Toggle Display Mode"
       }
     ],
     "configuration": {
@@ -80,6 +84,21 @@
           "type": "number",
           "default": 3600,
           "description": "Cache TTL in seconds (0 to disable)"
+        },
+        "gitlabBlame.displayMode": {
+          "type": "string",
+          "enum": [
+            "hover",
+            "inline",
+            "both"
+          ],
+          "enumDescriptions": [
+            "Show MR/PR links only on hover",
+            "Show MR/PR links inline (end-of-line decorations)",
+            "Show both inline annotations and hover tooltips"
+          ],
+          "default": "inline",
+          "description": "How to display Merge Request/Pull Request information"
         }
       }
     }

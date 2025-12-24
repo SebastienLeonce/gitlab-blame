@@ -96,6 +96,57 @@ Cache time-to-live for MR lookups.
 
 ---
 
+### `gitlabBlame.displayMode`
+
+| Property | Value |
+|----------|-------|
+| Type | `string` (enum) |
+| Default | `"inline"` |
+| Allowed Values | `"hover"`, `"inline"`, `"both"` |
+| Scope | User/Workspace |
+
+How to display Merge Request/Pull Request information.
+
+**Display Modes**:
+- `hover`: Show MR/PR links only in hover tooltips
+- `inline`: Show MR/PR links as end-of-line decorations (default)
+- `both`: Show both inline annotations and hover tooltips
+
+**Examples**:
+```json
+{
+  "gitlabBlame.displayMode": "hover"
+}
+```
+
+```json
+{
+  "gitlabBlame.displayMode": "inline"
+}
+```
+
+```json
+{
+  "gitlabBlame.displayMode": "both"
+}
+```
+
+**Inline Display Format**:
+- **GitLab**: `!123` (exclamation mark + MR number)
+- **GitHub**: `#456` (hash + PR number)
+
+**Behavior**:
+- Inline annotations only show for lines with associated MR/PR (not all lines)
+- Hovering over inline annotation shows tooltip with full MR/PR details
+- Changing display mode requires window reload to apply changes
+
+**Performance**:
+- Inline mode uses batch fetching for better performance
+- Shares same cache as hover mode (no duplicate API calls)
+- Debounced updates (500ms) on file edits to avoid excessive refreshes
+
+---
+
 ## Personal Access Tokens
 
 Tokens are stored securely in VS Code's `SecretStorage`. Not visible in settings. The extension supports multiple VCS providers with separate tokens.
@@ -179,10 +230,13 @@ Commands available via Command Palette (`Ctrl+Shift+P`):
 |---------|-----|-------------|
 | Set Personal Access Token | `gitlabBlame.setToken` | Configure VCS token (auto-detects provider) |
 | Delete Personal Access Token | `gitlabBlame.deleteToken` | Remove stored token (auto-detects provider) |
+| Toggle Display Mode | `gitlabBlame.toggleDisplayMode` | Cycle through display modes (hover → inline → both → hover) |
 | Clear Cache | `gitlabBlame.clearCache` | Manual cache invalidation |
 | Show Status | `gitlabBlame.showStatus` | Display current configuration |
 
 **Auto-Detection**: `setToken` and `deleteToken` commands automatically detect which provider (GitLab or GitHub) based on your current workspace's git remote URL. If no workspace is open or detection fails, you'll be prompted to select the provider.
+
+**Toggle Display Mode**: Cycles through the three display modes in order: `hover` → `inline` → `both` → `hover`. Prompts for window reload after changing mode.
 
 ### Show Status Output
 

@@ -5,9 +5,12 @@ import {
   COMMANDS,
   DEFAULTS,
   VCS_PROVIDERS,
+  DISPLAY_MODES,
+  DisplayMode,
 } from "./constants";
 import { IVcsProvider } from "./interfaces/IVcsProvider";
 import { VcsError, VcsErrorType } from "./interfaces/types";
+import { BlameDecorationProvider } from "./providers/BlameDecorationProvider";
 import { BlameHoverProvider } from "./providers/BlameHoverProvider";
 import { GitHubProvider } from "./providers/vcs/GitHubProvider";
 import { GitLabProvider } from "./providers/vcs/GitLabProvider";
@@ -26,6 +29,7 @@ interface ExtensionState {
   cacheService?: CacheService;
   tokenService?: TokenService;
   vcsProviderFactory?: VcsProviderFactory;
+  decorationProvider?: BlameDecorationProvider;
 }
 
 const state: ExtensionState = {};
@@ -88,9 +92,38 @@ export async function activate(
     state.cacheService,
     handleVcsError,
   );
-  context.subscriptions.push(
-    vscode.languages.registerHoverProvider({ scheme: "file" }, hoverProvider),
+
+  // Get display mode configuration
+  const displayMode = config.get<string>(
+    CONFIG_KEYS.DISPLAY_MODE,
+    DEFAULTS.DISPLAY_MODE,
   );
+
+  state.decorationProvider = new BlameDecorationProvider(
+    state.gitService,
+    state.vcsProviderFactory,
+    state.cacheService,
+    displayMode as DisplayMode,
+    handleVcsError,
+  );
+
+  // Conditionally activate decoration provider
+  if (
+    displayMode === DISPLAY_MODES.INLINE ||
+    displayMode === DISPLAY_MODES.BOTH
+  ) {
+    state.decorationProvider.activate();
+  }
+
+  // Conditionally register hover provider
+  if (
+    displayMode === DISPLAY_MODES.HOVER ||
+    displayMode === DISPLAY_MODES.BOTH
+  ) {
+    context.subscriptions.push(
+      vscode.languages.registerHoverProvider({ scheme: "file" }, hoverProvider),
+    );
+  }
 
   // Listen for secret changes (e.g., token updated externally)
   context.subscriptions.push(
@@ -153,6 +186,21 @@ export async function activate(
         if (provider) {
           provider.setHostUrl(newUrl);
         }
+      }
+
+      if (e.affectsConfiguration(CONFIG_KEYS.DISPLAY_MODE)) {
+        void vscode.window
+          .showInformationMessage(
+            "Display mode changed. Reload window to apply changes.",
+            "Reload",
+          )
+          .then((action) => {
+            if (action === "Reload") {
+              void vscode.commands.executeCommand(
+                "workbench.action.reloadWindow",
+              );
+            }
+          });
       }
     }),
   );
@@ -398,15 +446,55 @@ function registerCommands(context: vscode.ExtensionContext): void {
       }
     }),
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(COMMANDS.TOGGLE_DISPLAY_MODE, async () => {
+      const config = vscode.workspace.getConfiguration();
+      const currentMode = config.get<string>(
+        CONFIG_KEYS.DISPLAY_MODE,
+        DEFAULTS.DISPLAY_MODE,
+      );
+
+      // Cycle through modes: hover -> inline -> both -> hover
+      const modes = [
+        DISPLAY_MODES.HOVER,
+        DISPLAY_MODES.INLINE,
+        DISPLAY_MODES.BOTH,
+      ] as const;
+      const currentIndex = modes.indexOf(currentMode as (typeof modes)[number]);
+      const nextMode = modes[(currentIndex + 1) % modes.length];
+
+      await config.update(
+        CONFIG_KEYS.DISPLAY_MODE,
+        nextMode,
+        vscode.ConfigurationTarget.Global,
+      );
+
+      void vscode.window
+        .showInformationMessage(
+          `Display mode: ${nextMode}. Reload window to apply.`,
+          "Reload",
+        )
+        .then((action) => {
+          if (action === "Reload") {
+            void vscode.commands.executeCommand(
+              "workbench.action.reloadWindow",
+            );
+          }
+        });
+    }),
+  );
 }
 
 export function deactivate(): void {
+  state.decorationProvider?.dispose();
   state.cacheService?.dispose();
   state.vcsProviderFactory?.clear();
   state.gitService = undefined;
   state.cacheService = undefined;
   state.tokenService = undefined;
   state.vcsProviderFactory = undefined;
+  state.decorationProvider = undefined;
 }
 
 /**

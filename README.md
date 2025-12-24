@@ -26,7 +26,8 @@ Instantly see which Merge Request or Pull Request introduced any line of code - 
 
 ## ✨ Features
 
-- 🔗 **Direct MR/PR Links** - Click to open in browser from blame hover
+- 🔗 **Direct MR/PR Links** - Click to open in browser from blame hover or inline annotations
+- 📍 **Inline Annotations** - Show MR/PR links at end-of-line - configurable display modes
 - 🌍 **Multi-Provider** - Works with **GitLab** and **GitHub** (including self-hosted/Enterprise)
 - 🚀 **Smart Caching** - TTL-based caching with auto-invalidation on git operations
 - 🔒 **Secure Tokens** - Encrypted storage via VS Code SecretStorage
@@ -108,6 +109,7 @@ Configure in VS Code settings (`settings.json`):
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `gitlabBlame.displayMode` | `inline` | How to display MR/PR info: `hover` (tooltip only), `inline` (end-of-line annotations), or `both` |
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
 | `gitlabBlame.githubUrl` | `https://github.com` | GitHub instance URL |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout in seconds (0 to disable) |
@@ -134,6 +136,7 @@ Access via Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`):
 |---------|-------------|----------------|
 | `Git Blame: Set Personal Access Token` | Configure your PAT | ✓ Detects GitLab/GitHub from git remote |
 | `Git Blame: Delete Personal Access Token` | Remove stored token | ✓ Detects GitLab/GitHub from git remote |
+| `Git Blame: Toggle Display Mode` | Cycle through display modes (hover → inline → both) | N/A |
 | `Git Blame: Clear Cache` | Clear cached MR/PR data | N/A |
 | `Git Blame: Show Status` | Display configuration and cache info | Shows both providers |
 

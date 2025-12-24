@@ -7,28 +7,30 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                         VS Code Host                                 │
-│  ┌─────────────────────────────────────────────────────────────┐    │
-│  │                  BlameHoverProvider                          │    │
-│  │             (providers/BlameHoverProvider.ts)               │    │
-│  │        Registers for all files, builds hover content        │    │
-│  └──────────┬──────────────┬──────────────┬────────────────────┘    │
-│             │              │              │                          │
-│      ┌──────▼─────┐ ┌──────▼─────┐ ┌──────▼──────────────┐         │
-│      │ GitService │ │CacheService│ │ VcsProviderFactory  │         │
-│      │(services/) │ │(services/) │ │    (services/)      │         │
-│      └──────┬─────┘ └──────┬─────┘ └──────┬──────────────┘         │
-│             │              │              │                          │
-│             │              │         ┌────▼────┐  ┌────────┐        │
-│      ┌──────▼─────┐ ┌──────▼─────┐  │ GitLab  │  │ GitHub │        │
-│      │ vscode.git │ │  In-Memory │  │Provider │  │Provider│        │
-│      │ Extension  │ │   Cache    │  │ (vcs/)  │  │ (vcs/) │        │
-│      └────────────┘ └────────────┘  └────┬────┘  └───┬────┘        │
-│                                          │           │               │
-│                                    ┌─────▼────┐ ┌────▼─────┐        │
-│                                    │ GitLab   │ │ GitHub   │        │
-│                                    │   API    │ │   API    │        │
-│                                    │ (fetch)  │ │ (fetch)  │        │
-│                                    └──────────┘ └──────────┘        │
+│  ┌──────────────────────────────────┐  ┌──────────────────────────┐ │
+│  │     BlameHoverProvider           │  │ BlameDecorationProvider  │ │
+│  │  (providers/BlameHoverProvider)  │  │(providers/BlameDecoration│ │
+│  │  On-demand hover tooltips        │  │  Provider.ts)            │ │
+│  │                                  │  │ Inline end-of-line       │ │
+│  │                                  │  │   annotations            │ │
+│  └──────┬───────────┬───────────┬───┘  └──┬───────────┬──────────┬┘ │
+│         │           │           │         │           │          │   │
+│  ┌──────▼─────┐ ┌───▼─────┐ ┌──▼─────────▼───┐ ┌─────▼──────────▼┐ │
+│  │ GitService │ │  Cache  │ │VcsProviderFactory│ │   TokenService │ │
+│  │(services/) │ │ Service │ │    (services/)   │ │   (services/)  │ │
+│  └──────┬─────┘ └───┬─────┘ └──┬───────────────┘ └────────────────┘ │
+│         │           │           │                                     │
+│         │           │      ┌────▼────┐  ┌────────┐                  │
+│  ┌──────▼─────┐ ┌───▼───┐  │ GitLab  │  │ GitHub │                  │
+│  │ vscode.git │ │In-Mem │  │Provider │  │Provider│                  │
+│  │ Extension  │ │ Cache │  │ (vcs/)  │  │ (vcs/) │                  │
+│  └────────────┘ └───────┘  └────┬────┘  └───┬────┘                  │
+│                                 │           │                         │
+│                           ┌─────▼────┐ ┌────▼─────┐                  │
+│                           │ GitLab   │ │ GitHub   │                  │
+│                           │   API    │ │   API    │                  │
+│                           │ (fetch)  │ │ (fetch)  │                  │
+│                           └──────────┘ └──────────┘                  │
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -53,6 +55,25 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 - Formats hover content as Markdown with MR/PR links
 - Handles pending request deduplication to avoid duplicate API calls
 - Supports cancellation tokens for responsive UI
+- Delegates error UI to extension via `VcsErrorHandler` callback
+
+### BlameDecorationProvider (`src/providers/BlameDecorationProvider.ts`)
+
+- Provides inline end-of-line decorations showing MR/PR links
+- Activated conditionally based on `displayMode` setting (inline or both)
+- **Active Line Only Mode**: Decoration follows cursor, showing MR/PR link only on the currently active line
+  - Previous decoration disappears when cursor moves to a new line
+  - New decoration appears instantly (cache hit) or after API fetch (cache miss)
+- **Cursor Movement Tracking**: Updates decoration when cursor moves (100ms debounce)
+- Uses VS Code TextEditorDecorationType API for inline annotations
+- Debounces file changes (500ms) to prevent excessive updates
+- Only shows decoration on lines with associated MR/PR
+- Shares cache with BlameHoverProvider (no duplicate API calls)
+- Format: `!123` for GitLab, `#456` for GitHub
+- **Display Mode Behavior**:
+  - `inline` mode: Decorations include `hoverMessage` (only decoration provider active)
+  - `hover` mode: Decorations include `hoverMessage` (fallback if hover provider fails)
+  - `both` mode: Decorations **omit** `hoverMessage` to prevent duplication (HoverProvider handles tooltips)
 - Delegates error UI to extension via `VcsErrorHandler` callback
 
 ### GitService (`src/services/GitService.ts`)
@@ -126,6 +147,8 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 
 ## Data Flow
 
+### Hover Mode
+
 1. **User hovers over a line**
 2. **BlameHoverProvider.provideHover()** called by VS Code
 3. **GitService.getBlameForLine()** fetches blame via vscode.git API
@@ -138,11 +161,58 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
    - Result cached with TTL using key format `{providerId}:{sha}`
 6. **Hover markdown** returned with MR/PR link, commit SHA, author, date, message
 
+### Inline Mode (Active Line Only)
+
+1. **File opens, content changes, or cursor moves** (debounced 100-500ms)
+2. **BlameDecorationProvider.updateActiveLineDecoration()** triggered
+3. **Clear all existing decorations** (only one decoration visible at a time)
+4. **Get active line** from cursor position
+5. **GitService.getBlameForLine()** fetches blame for single line
+6. **CacheService.get(providerId, sha)** checks cache (fast path)
+7. If cache miss: **Provider.getMergeRequestForCommit()** fetches from API
+8. **editor.setDecorations()** applies single decoration for active line
+9. **Cursor Movement** (debounced 100ms):
+   - Track cursor position changes
+   - Previous decoration automatically cleared
+   - New decoration applied for new active line
+
 ## Key Design Decisions
 
 ### Provider Abstraction
 
 VCS providers implement `IVcsProvider` interface, enabling support for GitLab, GitHub, and Bitbucket. The factory pattern allows runtime provider detection based on remote URL.
+
+### Dual-Provider Architecture (Hover + Inline)
+
+BlameHoverProvider and BlameDecorationProvider are separate classes with distinct lifecycles:
+- **Hover**: On-demand, triggered by user hover events
+- **Inline**: Active line only, follows cursor position
+
+Both share the same service instances (GitService, CacheService, VcsProviderFactory) for consistency and cache reuse. Providers are conditionally activated based on `displayMode` setting.
+
+### Active Line Only for Inline Decorations
+
+BlameDecorationProvider shows the MR/PR decoration only on the currently active line:
+
+**Why Active Line Only?**
+- Minimizes visual clutter (only one decoration visible at a time)
+- Decoration follows cursor, showing context for the line being worked on
+- Fast response time (<100ms cache hit, ~300ms cache miss)
+- Clean user experience without persistent decorations
+
+**Behavior**:
+- When cursor moves to a new line, old decoration disappears
+- New decoration appears on the active line (instant if cached)
+- Debounced (100ms) to avoid flickering during rapid cursor movement
+
+### Configurable Display Modes
+
+Users can choose how to view MR/PR information:
+- **hover**: Tooltips only (minimal visual clutter)
+- **inline**: End-of-line decorations (always visible, no hover needed, default)
+- **both**: Inline + tooltips (maximum visibility)
+
+Changing display mode requires window reload to re-register providers.
 
 ### Services Return Data, Not UI
 
@@ -186,7 +256,8 @@ src/
 │   ├── index.ts                     # Barrel exports
 │   └── types.ts                     # Shared type definitions
 ├── providers/
-│   ├── BlameHoverProvider.ts        # Hover provider implementation
+│   ├── BlameDecorationProvider.ts   # Inline decoration provider
+│   ├── BlameHoverProvider.ts        # Hover tooltip provider
 │   └── vcs/
 │       ├── GitHubProvider.ts        # GitHub VCS provider
 │       └── GitLabProvider.ts        # GitLab VCS provider
@@ -222,7 +293,7 @@ The project uses automated quality gates (git hooks, testing, coverage) to maint
 - Development workflow
 
 **Quick Summary**:
-- 200+ unit tests (~350ms execution, 95%+ coverage)
+- 316 unit tests (~700ms execution, 92%+ coverage)
 - Pre-commit: ESLint + TypeScript type check
 - Pre-push: Tests + coverage (90%/85% thresholds) + build
 - Tools: TypeScript (strict), ESLint, Mocha, Sinon, c8, Husky

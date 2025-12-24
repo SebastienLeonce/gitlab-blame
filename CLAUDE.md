@@ -40,6 +40,7 @@ src/
 │   ├── index.ts                     # Barrel exports
 │   └── types.ts                     # Shared type definitions
 ├── providers/
+│   ├── BlameDecorationProvider.ts   # Inline decoration provider
 │   ├── BlameHoverProvider.ts        # Hover tooltip logic
 │   └── vcs/
 │       ├── GitHubProvider.ts        # GitHub VCS provider
@@ -166,6 +167,7 @@ test(gitlab): add edge case for nested groups
 
 | Setting | Default | Description |
 |---------|---------|-------------|
+| `gitlabBlame.displayMode` | `inline` | How to display MR/PR info: `hover`, `inline`, or `both` |
 | `gitlabBlame.gitlabUrl` | `https://gitlab.com` | GitLab instance URL |
 | `gitlabBlame.githubUrl` | `https://github.com` | GitHub URL (auto-converted to API URL) |
 | `gitlabBlame.cacheTTL` | `3600` | Cache timeout (seconds) |
@@ -180,6 +182,7 @@ test(gitlab): add edge case for nested groups
 |------------|-------|----------------|
 | `gitlabBlame.setToken` | Set Personal Access Token | ✓ Detects GitLab/GitHub from git remote |
 | `gitlabBlame.deleteToken` | Delete Personal Access Token | ✓ Detects GitLab/GitHub from git remote |
+| `gitlabBlame.toggleDisplayMode` | Toggle Display Mode | N/A |
 | `gitlabBlame.clearCache` | Clear Cache | N/A |
 | `gitlabBlame.showStatus` | Show Status | Shows all providers |
 

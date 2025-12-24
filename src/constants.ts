@@ -5,6 +5,7 @@ export const CONFIG_KEYS = {
   GITLAB_URL: "gitlabBlame.gitlabUrl",
   GITHUB_URL: "gitlabBlame.githubUrl",
   CACHE_TTL: "gitlabBlame.cacheTTL",
+  DISPLAY_MODE: "gitlabBlame.displayMode",
 } as const;
 
 /**
@@ -23,6 +24,7 @@ export const COMMANDS = {
   DELETE_TOKEN: "gitlabBlame.deleteToken",
   CLEAR_CACHE: "gitlabBlame.clearCache",
   SHOW_STATUS: "gitlabBlame.showStatus",
+  TOGGLE_DISPLAY_MODE: "gitlabBlame.toggleDisplayMode",
 } as const;
 
 /**
@@ -32,6 +34,7 @@ export const DEFAULTS = {
   GITLAB_URL: "https://gitlab.com",
   GITHUB_URL: "https://github.com",
   CACHE_TTL_SECONDS: 3600,
+  DISPLAY_MODE: "inline",
 } as const;
 
 /**
@@ -44,6 +47,17 @@ export const VCS_PROVIDERS = {
 } as const;
 
 export type VcsProviderId = (typeof VCS_PROVIDERS)[keyof typeof VCS_PROVIDERS];
+
+/**
+ * Display mode options for blame information
+ */
+export const DISPLAY_MODES = {
+  HOVER: "hover",
+  INLINE: "inline",
+  BOTH: "both",
+} as const;
+
+export type DisplayMode = (typeof DISPLAY_MODES)[keyof typeof DISPLAY_MODES];
 
 /**
  * HTTP status codes used in VCS API error handling
@@ -99,4 +113,12 @@ export const UI_CONSTANTS = {
   ELLIPSIS_LENGTH: 3,
   /** Short SHA display length (first N characters) */
   SHORT_SHA_LENGTH: 7,
+  /** Debounce delay for cursor movement (ms) */
+  CURSOR_DEBOUNCE_MS: 100,
+  /** Debounce delay for document changes (ms) */
+  DOCUMENT_DEBOUNCE_MS: 500,
+  /** Delay between retries for initial decoration update (ms) */
+  INIT_RETRY_DELAY_MS: 500,
+  /** Maximum retries for initial decoration update */
+  MAX_INIT_RETRIES: 3,
 } as const;
