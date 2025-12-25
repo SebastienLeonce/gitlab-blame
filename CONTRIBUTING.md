@@ -46,7 +46,8 @@ npm run watch      # Development watch mode (sourcemaps enabled)
 
 ```bash
 npm run pretest           # Compile tests
-npm test                  # Run test suite (229 tests)
+npm test                  # Run unit + integration tests (~300 tests)
+npm run test:e2e          # Run E2E tests (~22 tests)
 npm run test:coverage     # Run with coverage report (90%+ required)
 npm run test:watch        # Watch mode for TDD
 ```
@@ -101,7 +102,7 @@ The project uses Husky for automated quality checks:
 - 📝 Documentation sync reminder (non-blocking)
 
 #### Pre-Push Hook (~20-30s)
-- ✅ Full test suite (229 tests)
+- ✅ Full test suite (~300 unit/integration tests)
 - ✅ Coverage threshold enforcement
 - ✅ Production build verification
 - ✅ No focused tests (`.only()` check)
@@ -204,25 +205,38 @@ For detailed examples, see [`CLAUDE.md`](CLAUDE.md) §Development Guidelines.
 
 ### Test Organization
 
-Tests mirror the source structure:
+Tests are organized by type:
 
 ```
 test/
-├── suite/
-│   ├── extension.test.ts
-│   ├── providers/
-│   │   ├── BlameHoverProvider.test.ts
-│   │   └── vcs/
-│   │       ├── GitHubProvider.test.ts
-│   │       └── GitLabProvider.test.ts
-│   ├── services/
-│   │   ├── CacheService.test.ts
-│   │   ├── GitService.test.ts
-│   │   └── VcsProviderFactory.test.ts
-│   └── utils/
-│       └── remoteParser.test.ts
-└── runTest.ts
+├── runTest.ts                       # Unit + integration test runner
+├── runE2ETest.ts                    # E2E test runner
+└── suite/
+    ├── index.ts                     # Test loader (loads unit/ and integration/)
+    ├── unit/                        # Unit tests (full Sinon mocking, ~210 tests)
+    │   ├── blameDecorationProvider.test.ts
+    │   ├── blameHoverProvider.test.ts
+    │   ├── cacheService.test.ts
+    │   ├── gitService.test.ts
+    │   ├── githubProvider.test.ts
+    │   ├── gitlabProvider.test.ts
+    │   ├── remoteParser.test.ts
+    │   ├── tokenService.test.ts
+    │   └── vcsProviderFactory.test.ts
+    ├── integration/                 # Integration tests (real VS Code APIs, ~9 tests)
+    │   └── integration.test.ts
+    └── e2e/                         # E2E tests (full system, ~22 tests)
+        ├── index.ts
+        ├── errorHandling.e2e.ts
+        ├── hoverShowsMrInfo.e2e.ts
+        ├── inlineDecoration.e2e.ts
+        └── helpers/                 # Test utilities
 ```
+
+**Test Types**:
+- **Unit Tests** (`test/suite/unit/`): Full mocking with Sinon, no real services
+- **Integration Tests** (`test/suite/integration/`): Real VS Code APIs, simulated git operations
+- **E2E Tests** (`test/suite/e2e/`): Full system with real Git extension and fixture repository
 
 ### Writing Tests
 
@@ -264,6 +278,99 @@ describe('ComponentName', () => {
   });
 });
 ```
+
+### E2E Test Setup Pattern
+
+All e2e test suites must follow this setup pattern:
+
+```typescript
+suiteSetup(async function () {
+  this.timeout(60000);
+
+  // 1. Setup fixture repository
+  fixtureRepo = new FixtureRepository(fixtureBasePath);
+  await fixtureRepo.setup();
+
+  // 2. Wait for extension to activate
+  await waitForExtensionActivation();
+
+  // 3. Wait for Git extension to detect fixture repo
+  const fixtureUri = vscode.Uri.file(fixtureRepo.getFilePath("src/auth.ts"));
+  await waitForGitRepository(fixtureUri);
+
+  // 4. Initialize test helpers
+  hoverTrigger = new HoverTrigger();
+});
+```
+
+**Why step 3 is critical:** Git extension loads repositories asynchronously after initialization. Without this wait, `getRepository()` returns `null` and tests fail.
+
+## Modifying E2E Fixtures
+
+E2E tests use git repository fixtures located in `test/suite/e2e/fixtures/`.
+
+### Quick Reference
+
+- **Documentation**: See [`test/suite/e2e/fixtures/README.md`](test/suite/e2e/fixtures/README.md) for detailed instructions
+- **Verify fixtures**: `npm run fixture:verify`
+- **Rebuild fixtures**: `npm run fixture:rebuild`
+- **Clean fixtures**: `npm run fixture:clean`
+
+### Fixture Management Scripts
+
+#### `npm run fixture:clean`
+Removes the `.git` directory from the fixture repo, forcing regeneration on next test run.
+
+**Use when**:
+- Testing fixture initialization logic
+- Fixture `.git` is corrupted
+- Want to start fresh
+
+#### `npm run fixture:rebuild`
+Cleans the `.git` directory and rebuilds the entire test environment (compile + copy fixtures).
+
+**Use when**:
+- Made manual changes to fixture files
+- Want to ensure fixture is in sync with code
+- Preparing for a clean test run
+
+#### `npm run fixture:verify`
+Runs validation tests to ensure fixture integrity matches `FIXTURE_COMMITS` definition.
+
+**Use when**:
+- After modifying fixture
+- Before committing changes
+- Debugging test failures related to fixtures
+
+**Validation checks**:
+- ✅ `.git` directory exists
+- ✅ Commit count matches `FIXTURE_COMMITS.length`
+- ✅ Commit messages match `FIXTURE_COMMITS[].message`
+- ✅ Expected files exist (`FIXTURE_COMMITS[].files`)
+- ✅ Remote URL matches expected value
+
+### Important Notes
+
+- **Fixture .git is committed**: The fixture `.git` directory is tracked in version control. Changes to fixture commits will modify the committed `.git` directory.
+- **Use deterministic commit dates**: Always set `GIT_AUTHOR_DATE` and `GIT_COMMITTER_DATE` environment variables when creating commits
+- **Update `FIXTURE_COMMITS` constant**: Keep `test/suite/e2e/helpers/fixtureRepo.ts` in sync with fixture state
+- **Run validation before committing**: Use `npm run fixture:verify` to catch fixture/code drift
+
+**Example - Adding a new commit**:
+```bash
+cd test/suite/e2e/fixtures/test-repo
+echo "export const config = {};" > src/config.ts
+git add .
+GIT_AUTHOR_DATE="2024-01-20T10:00:00Z" \
+GIT_COMMITTER_DATE="2024-01-20T10:00:00Z" \
+git commit -m "feat: add configuration (#2)"
+
+# Update FIXTURE_COMMITS in fixtureRepo.ts
+# Then verify
+npm run fixture:verify
+```
+
+For comprehensive guidance, see [`test/suite/e2e/fixtures/README.md`](test/suite/e2e/fixtures/README.md).
 
 ## Pull Request Guidelines
 

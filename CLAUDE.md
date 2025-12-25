@@ -68,6 +68,28 @@ ref/                                 # Documentation (for humans)
     ├── services.md                  # Services API
     ├── providers.md                 # Providers API
     └── utilities.md                 # Utilities API
+
+test/
+├── runTest.ts                       # Unit+integration test runner
+├── runE2ETest.ts                    # E2E test runner
+└── suite/
+    ├── index.ts                     # Test loader (loads unit/ and integration/)
+    ├── unit/                        # Unit tests (full Sinon mocking, ~210 tests)
+    │   ├── blameDecorationProvider.test.ts
+    │   ├── blameHoverProvider.test.ts
+    │   ├── cacheService.test.ts
+    │   ├── gitService.test.ts
+    │   ├── githubProvider.test.ts
+    │   ├── gitlabProvider.test.ts
+    │   ├── remoteParser.test.ts
+    │   ├── tokenService.test.ts
+    │   └── vcsProviderFactory.test.ts
+    ├── integration/                 # Integration tests (real VS Code APIs, ~9 tests)
+    │   └── integration.test.ts
+    └── e2e/                         # E2E tests (full system, ~22 tests)
+        ├── index.ts
+        ├── *.e2e.ts                 # 3 test files
+        └── helpers/                 # Test utilities
 ```
 
 ---
@@ -79,7 +101,8 @@ ref/                                 # Documentation (for humans)
 ```bash
 npm run build           # Production build (esbuild, minified)
 npm run watch           # Development watch mode
-npm test                # Run all tests
+npm test                # Run unit tests
+npm run test:e2e        # Run end-to-end tests (requires VS Code instance)
 npm run lint            # ESLint check
 npm run typecheck       # TypeScript type checking
 npm run validate        # Run all checks (lint + typecheck + coverage + build)
@@ -90,6 +113,7 @@ npm run validate        # Run all checks (lint + typecheck + coverage + build)
 ```bash
 # Build
 npm run build           # Production build (esbuild, minified)
+npm run build:dev       # Development build (esbuild, with sourcemap, no minification)
 npm run watch           # Development watch mode
 
 # Linting
@@ -101,11 +125,13 @@ npm run typecheck       # TypeScript type checking
 npm run typecheck:watch # TypeScript in watch mode
 
 # Testing
-npm test                # Run all tests
+npm test                # Run unit tests only
 npm run test:unit       # Alias for npm test
-npm run test:coverage   # Run tests with coverage report
+npm run test:e2e        # Run end-to-end tests (requires VS Code instance)
+npm run test:coverage   # Run unit tests with coverage report
 npm run test:watch      # Watch mode for TDD
 npm run pretest         # Compile tests only
+npm run pretest:e2e     # Compile and prepare e2e tests (build + compile + copy fixtures)
 
 # Quality
 npm run validate        # All checks: lint + typecheck + coverage + build
@@ -121,6 +147,13 @@ npm run version:major   # Bump major version
 npm run package         # Create .vsix package
 npm run publish         # Publish to marketplace
 ```
+
+### E2E Test Reliability
+
+E2E tests now reliably detect the fixture Git repository using `waitForGitRepository()` helper:
+- Waits for Git extension to finish scanning workspace folders
+- Uses retry pattern matching production code (3 retries × 500ms)
+- Tests verify actual functionality, not just "didn't crash"
 
 ---
 

@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { CacheService } from "../../src/services/CacheService";
-import { CONFIG_KEYS } from "../../src/constants";
+import { CacheService } from "../../../src/services/CacheService";
+import { CONFIG_KEYS } from "../../../src/constants";
 
 suite("CacheService", () => {
   let cacheService: CacheService;

@@ -106,6 +106,7 @@
   "scripts": {
     "vscode:prepublish": "npm run build",
     "build": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --minify --sourcemap",
+    "build:dev": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap",
     "watch": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node --sourcemap --watch",
     "lint": "eslint src --ext ts",
     "lint:fix": "eslint src --ext ts --fix",
@@ -115,7 +116,12 @@
     "test:unit": "npm test",
     "test:coverage": "c8 npm test",
     "test:watch": "npm test -- --watch",
+    "test:e2e": "node ./out/test/runE2ETest.js",
     "pretest": "tsc -p ./tsconfig.test.json",
+    "pretest:e2e": "npm run build:dev && tsc -p ./tsconfig.test.json && cp -r test/suite/e2e/fixtures out/test/suite/e2e/",
+    "fixture:clean": "rm -rf test/suite/e2e/fixtures/test-repo/.git",
+    "fixture:rebuild": "npm run fixture:clean && npm run pretest:e2e",
+    "fixture:verify": "npm run pretest && mocha --ui tdd out/test/suite/e2e/fixtures/validate.test.js",
     "validate": "npm run lint && npm run typecheck && npm run test:coverage && npm run build",
     "pre-commit": "npm run lint && npm run typecheck",
     "pre-push": "npm run test:coverage && npm run build",
@@ -143,6 +149,7 @@
     "glob": "^10.3.10",
     "husky": "^9.1.7",
     "mocha": "^10.2.0",
+    "nock": "^14.0.10",
     "sinon": "^17.0.1",
     "typescript": "^5.3.2"
   },
@@ -157,8 +164,7 @@
       "out/src/extension.js",
       "out/src/types/**",
       "out/src/interfaces/**",
-      "out/src/**/index.js",
-      "out/src/services/TokenService.js"
+      "out/src/**/index.js"
     ],
     "reporter": [
       "text",

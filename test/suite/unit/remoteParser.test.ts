@@ -5,7 +5,7 @@ import {
   isGitLabRemote,
   parseGitHubRemote,
   isGitHubRemote,
-} from "../../src/utils/remoteParser";
+} from "../../../src/utils/remoteParser";
 
 suite("Remote Parser", () => {
   suite("parseGitLabRemote", () => {

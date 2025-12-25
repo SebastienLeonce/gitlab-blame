@@ -24,6 +24,20 @@ if [ -n "$SKIP_COUNT" ] && [ "$SKIP_COUNT" -gt 0 ]; then
   echo ""
 fi
 
+# Verify fixture integrity
+echo "🔧 Verifying fixture integrity..."
+if ! npm run fixture:verify --silent; then
+  echo ""
+  echo "❌ Fixture validation failed."
+  echo "   Fixture state doesn't match FIXTURE_COMMITS definition."
+  echo "   Run: npm run fixture:verify (to see details)"
+  echo "   Then: npm run fixture:rebuild (to fix)"
+  echo "   Or use: git push --no-verify (not recommended)"
+  exit 1
+fi
+echo "✅ Fixture integrity verified"
+echo ""
+
 # Run full test suite with coverage
 echo "🧪 Running tests with coverage..."
 if ! npm run test:coverage; then

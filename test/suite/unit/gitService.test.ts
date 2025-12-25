@@ -1,7 +1,7 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { GitService } from "../../src/services/GitService";
+import { GitService } from "../../../src/services/GitService";
 
 suite("GitService", () => {
   let gitService: GitService;

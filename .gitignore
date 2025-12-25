@@ -25,8 +25,8 @@ npm-debug.log*
 
 # Test coverage
 coverage/
-.nyc_output/
 
 # Environment
 .env
 .env.local
+# test/suite/e2e/fixtures/test-repo/.git/  # Now committed for faster CI

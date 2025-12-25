@@ -36,7 +36,6 @@ export class GitService {
    * Initialize the Git service by getting the VS Code Git extension API
    * @returns true if initialization succeeded, false otherwise
    */
-  /* c8 ignore start - Integration code tested by integration tests */
   async initialize(): Promise<boolean> {
     try {
       const gitExtension =
@@ -79,7 +78,6 @@ export class GitService {
       return false;
     }
   }
-  /* c8 ignore stop */
 
   /**
    * Get the initialization error message if initialization failed

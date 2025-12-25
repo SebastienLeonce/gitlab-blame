@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
-import { GitHubProvider } from "../../src/providers/vcs/GitHubProvider";
-import { VcsErrorType } from "../../src/interfaces/types";
-import { VCS_PROVIDERS } from "../../src/constants";
+import { GitHubProvider } from "../../../src/providers/vcs/GitHubProvider";
+import { VcsErrorType } from "../../../src/interfaces/types";
+import { VCS_PROVIDERS } from "../../../src/constants";
 
 suite("GitHubProvider", () => {
   let gitHubProvider: GitHubProvider;

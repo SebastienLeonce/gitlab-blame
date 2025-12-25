@@ -94,7 +94,7 @@ Runs on **every push** to prevent broken code from reaching remote:
 
 3. **Full Test Suite with Coverage**
    - Runs: `npm run test:coverage`
-   - Executes: All 225 unit and integration tests
+   - Executes: All ~300 unit and integration tests
    - Measures: Code coverage with c8
    - Enforces: Coverage thresholds (see below)
    - Fails on: Test failures OR coverage below thresholds
@@ -156,33 +156,62 @@ ERROR: Coverage for lines (87.2%) does not meet global threshold (90%)
 
 ## Test Philosophy
 
-### Unit Tests Over E2E
+### Unit, Integration, and E2E Tests
 
-The extension relies on **comprehensive unit tests** rather than end-to-end tests:
+The extension uses **three-tier testing strategy** for comprehensive quality assurance:
 
-**Why unit tests:**
+**Unit Tests** (`test/suite/unit/`):
 1. **Complete logic coverage** - All code paths tested
-2. **Fast execution** - 200+ tests run in ~350ms
-3. **Deterministic** - No flaky tests due to timing or environment
-4. **Easy debugging** - Failures pinpoint exact issue
-5. **VS Code limitations** - E2E tests face extension initialization challenges
+2. **Full mocking** - Uses Sinon to stub all external dependencies (VS Code APIs, services)
+3. **Fast execution** - 210+ tests run in ~350ms
+4. **Deterministic** - No flaky tests due to timing or environment
+5. **Easy debugging** - Failures pinpoint exact issue
 
-**E2E Testing Limitation:**
+**Integration Tests** (`test/suite/integration/`):
+1. **Real VS Code APIs** - Tests extension with actual VS Code APIs (not stubbed)
+2. **Service integration** - Verifies extension activation, commands, configuration
+3. **Fast execution** - 9 tests run in ~50ms
+4. **No external dependencies** - No real Git operations or external API calls
 
-Attempted E2E tests encountered VS Code test harness limitations where extension services don't initialize properly in test environments. Since unit tests already cover all logic thoroughly, E2E tests provide minimal additional value.
+**E2E Tests** (`test/suite/e2e/`):
+1. **Full system verification** - Tests extension with real VS Code Git API
+2. **Fixture repository** - Uses real git repository for realistic testing
+3. **Reliable execution** - Git repository detection with retry pattern (see below)
+4. **Full workflow testing** - Hover, inline decorations, error handling, API mocking with nock
+
+**Total**: 326 tests (210 unit, 9 integration, 22 E2E), ~500ms execution time, 93%+ code coverage
 
 ### Test Coverage Breakdown
+
+**Unit Tests** (`test/suite/unit/`):
 
 | Test Suite | Tests | Coverage Areas |
 |------------|-------|----------------|
 | `blameHoverProvider.test.ts` | 60+ | Markdown escaping, date formatting, MR fetching, cache, errors |
+| `githubProvider.test.ts` | 50+ | Token management, API calls, PR detection, commit message parsing |
 | `gitlabProvider.test.ts` | 40+ | Token management, API calls, error handling, MR selection |
 | `gitService.test.ts` | 30+ | Blame parsing, edge cases, unicode handling |
-| `cacheService.test.ts` | 15+ | TTL, expiration, null caching, disabled mode |
-| `remoteParser.test.ts` | 15+ | SSH, HTTPS, nested groups, self-hosted GitLab |
-| `integration.test.ts` | 7 | Extension activation, commands, configuration |
+| `cacheService.test.ts` | 67 | TTL, expiration, null caching, provider-specific keys |
+| `remoteParser.test.ts` | 15+ | SSH, HTTPS, nested groups, self-hosted GitLab/GitHub |
+| `tokenService.test.ts` | 31 | Multi-provider token management, SecretStorage |
+| `vcsProviderFactory.test.ts` | 11 | Provider registration, detection, URL matching |
+| `blameDecorationProvider.test.ts` | 20+ | Inline decorations, display modes, active line tracking |
 
-**Total**: 200+ tests, ~350ms execution time, 95%+ code coverage
+**Integration Tests** (`test/suite/integration/`):
+
+| Test Suite | Tests | Coverage Areas |
+|------------|-------|----------------|
+| `integration.test.ts` | 9 | Extension activation, commands, configuration, hover provider |
+
+**E2E Tests** (`test/suite/e2e/`):
+
+| Test Suite | Tests | Coverage Areas |
+|------------|-------|----------------|
+| `hoverShowsMrInfo.e2e.ts` | 10+ | Hover provider with real fixture repository and nocked GitHub APIs |
+| `inlineDecoration.e2e.ts` | 8+ | Inline decoration rendering with real files and display modes |
+| `errorHandling.e2e.ts` | 4+ | Error scenarios in real VS Code environment |
+
+**Total**: 326 tests, ~500ms execution time, 93%+ code coverage
 
 ### Test Patterns
 
@@ -191,12 +220,34 @@ Attempted E2E tests encountered VS Code test harness limitations where extension
 - **Private Method Testing**: Uses TypeScript type casting to test private methods
 - **Time Control**: Uses Sinon fake timers for deterministic date/time testing
 
+### Git Repository Detection in E2E Tests
+
+VS Code's Git extension loads repositories asynchronously **after** `api.state === "initialized"`. This creates a race condition where:
+- Extension activates successfully
+- Git API is initialized
+- But `api.repositories` is still empty (Git still scanning)
+
+**Solution:** Use `waitForGitRepository()` helper that mirrors production code's retry pattern from `BlameDecorationProvider.initialUpdateWithRetry()`.
+
+**Pattern:**
+```typescript
+await waitForExtensionActivation();
+const fixtureUri = vscode.Uri.file(fixtureRepo.getFilePath("src/auth.ts"));
+await waitForGitRepository(fixtureUri);  // Retries 3x with 500ms delays
+```
+
+**Failure scenarios:**
+- Timeout error: Git didn't detect repo in 1.5 seconds (increase retries if needed)
+- API unavailable: Extension didn't export API correctly
+- Clear error messages guide debugging
+
 ### Running Tests
 
 ```bash
-npm test                # Run all tests (compiles first via pretest)
+npm test                # Run unit + integration tests (~300 tests)
 npm run test:unit       # Alias for npm test
-npm run test:coverage   # Run with coverage report
+npm run test:e2e        # Run E2E tests (~22 tests, requires VS Code instance)
+npm run test:coverage   # Run unit + integration with coverage report
 npm run test:watch      # Watch mode for TDD
 npm run pretest         # Compile tests only (manual)
 ```

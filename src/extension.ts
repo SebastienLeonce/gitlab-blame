@@ -34,9 +34,20 @@ interface ExtensionState {
 
 const state: ExtensionState = {};
 
+/**
+ * Extension API exposed for testing
+ */
+export interface ExtensionApi {
+  getGitService: () => GitService | undefined;
+  getVcsProviderFactory: () => VcsProviderFactory | undefined;
+  getCacheService: () => CacheService | undefined;
+  getDecorationProvider: () => BlameDecorationProvider | undefined;
+  getTokenService: () => TokenService | undefined;
+}
+
 export async function activate(
   context: vscode.ExtensionContext,
-): Promise<void> {
+): Promise<ExtensionApi> {
   // Create output channel for error logging
   outputChannel = vscode.window.createOutputChannel("GitLab Blame");
   context.subscriptions.push(outputChannel);
@@ -206,6 +217,15 @@ export async function activate(
   );
 
   registerCommands(context);
+
+  // Return API for testing
+  return {
+    getGitService: () => state.gitService,
+    getVcsProviderFactory: () => state.vcsProviderFactory,
+    getCacheService: () => state.cacheService,
+    getDecorationProvider: () => state.decorationProvider,
+    getTokenService: () => state.tokenService,
+  };
 }
 
 /**
@@ -516,4 +536,18 @@ export function getVcsProviderFactory(): VcsProviderFactory | undefined {
  */
 export function getCacheService(): CacheService | undefined {
   return state.cacheService;
+}
+
+/**
+ * Get the BlameDecorationProvider instance (for testing)
+ */
+export function getDecorationProvider(): BlameDecorationProvider | undefined {
+  return state.decorationProvider;
+}
+
+/**
+ * Get the TokenService instance (for testing)
+ */
+export function getTokenService(): TokenService | undefined {
+  return state.tokenService;
 }

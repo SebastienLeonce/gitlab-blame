@@ -1,11 +1,11 @@
 import * as assert from "assert";
-import { VcsProviderFactory } from "../../src/services/VcsProviderFactory";
-import { IVcsProvider } from "../../src/interfaces/IVcsProvider";
+import { VcsProviderFactory } from "../../../src/services/VcsProviderFactory";
+import { IVcsProvider } from "../../../src/interfaces/IVcsProvider";
 import {
   VcsResult,
   RemoteInfo,
   VcsErrorType,
-} from "../../src/interfaces/types";
+} from "../../../src/interfaces/types";
 
 suite("VcsProviderFactory", () => {
   let factory: VcsProviderFactory;

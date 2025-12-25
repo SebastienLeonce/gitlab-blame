@@ -38,7 +38,7 @@ export class BlameDecorationProvider {
   /**
    * Activate decoration provider (register event listeners and update active editor)
    */
-  /* c8 ignore start */
+  /* c8 ignore start - VS Code API integration tested by e2e tests (inlineDecoration.e2e.ts) */
   activate(): void {
     this.registerEventListeners();
     void this.initialUpdateWithRetry();
@@ -83,7 +83,7 @@ export class BlameDecorationProvider {
   /**
    * Register event listeners for decoration updates
    */
-  /* c8 ignore start */
+  /* c8 ignore start - VS Code event listeners tested by e2e tests (inlineDecoration.e2e.ts) */
   private registerEventListeners(): void {
     // Update decorations when active editor changes
     this.disposables.push(
@@ -110,7 +110,6 @@ export class BlameDecorationProvider {
   /**
    * Handle cursor movement - update decoration to follow cursor
    */
-  /* c8 ignore start */
   private handleCursorMovement(
     event: vscode.TextEditorSelectionChangeEvent,
   ): void {
@@ -182,7 +181,7 @@ export class BlameDecorationProvider {
    * Update decoration for the active line (cursor position)
    * Clears any previous decoration and shows MR/PR link only on current line
    */
-  /* c8 ignore start */
+  /* c8 ignore start - VS Code decoration API tested by e2e tests (inlineDecoration.e2e.ts) */
   private async updateActiveLineDecoration(
     editor: vscode.TextEditor,
   ): Promise<void> {
