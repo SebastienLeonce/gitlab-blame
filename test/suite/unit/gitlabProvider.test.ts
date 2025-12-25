@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
-import { GitLabProvider } from "../../../src/providers/vcs/GitLabProvider";
-import { VcsErrorType } from "../../../src/interfaces/types";
-import { VCS_PROVIDERS } from "../../../src/constants";
+import { GitLabProvider } from "@providers/vcs/GitLabProvider";
+import { VcsErrorType } from "@types";
+import { VCS_PROVIDERS } from "@constants";
 
 suite("GitLabProvider", () => {
   let gitLabProvider: GitLabProvider;

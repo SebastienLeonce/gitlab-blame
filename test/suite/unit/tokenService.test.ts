@@ -1,8 +1,8 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { TokenService } from "../../../src/services/TokenService";
-import { VCS_PROVIDERS, SECRET_KEYS } from "../../../src/constants";
+import { TokenService } from "@services/TokenService";
+import { VCS_PROVIDERS, SECRET_KEYS } from "@constants";
 
 suite("TokenService", () => {
   let tokenService: TokenService;

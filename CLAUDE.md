@@ -324,6 +324,49 @@ try {
 
 **📖 Full API documentation**: See `ref/api/services.md` §ErrorLogger
 
+### Import Conventions
+
+**Use TypeScript path aliases, not relative parent directory imports** - Enforced by ESLint `no-restricted-imports` rule.
+
+**Available Path Aliases**:
+
+| Alias | Resolves To | Usage Example |
+|-------|-------------|---------------|
+| `@src` | `src/` | `import { activate } from "@src/extension"` |
+| `@constants` | `src/constants` | `import { CONFIG_KEYS } from "@constants"` |
+| `@types` | `src/types` | `import { MergeRequest } from "@types"` |
+| `@interfaces` | `src/interfaces` | `import { IVcsProvider } from "@interfaces"` |
+| `@services` | `src/services` | `import { GitService } from "@services/GitService"` |
+| `@providers` | `src/providers` | `import { GitLabProvider } from "@providers/vcs/GitLabProvider"` |
+| `@utils` | `src/utils` | `import { parseRemoteUrl } from "@utils/remoteParser"` |
+| `@test-helpers` | `test/suite/e2e/helpers` | `import { waitForGitRepository } from "@test-helpers"` |
+
+**ESLint Rules**:
+
+```typescript
+✅ // ALLOWED: Path aliases
+import { CONFIG_KEYS } from "@constants";
+import { GitService } from "@services/GitService";
+
+✅ // ALLOWED: Same-folder relative imports
+import { GitLabProvider } from "./GitLabProvider";
+
+✅ // ALLOWED: Child folder imports
+import { GitLabProvider } from "./vcs/GitLabProvider";
+
+❌ // FORBIDDEN: Parent directory imports
+import { CONFIG_KEYS } from "../../constants";
+import { GitService } from "../services/GitService";
+```
+
+**Why Path Aliases**:
+- **Refactor-safe**: Move files without breaking imports
+- **Clear dependencies**: Explicit layer separation (`@services`, `@providers`, `@utils`)
+- **Better IDE support**: Auto-completion and navigation
+- **Enforced architecture**: ESLint prevents crossing layers incorrectly
+
+**Implementation**: `tsc-alias` resolves path aliases at compile time for test files.
+
 ### Code Comments Philosophy
 
 **Core Principle: Comment the "WHY", not the "WHAT"**

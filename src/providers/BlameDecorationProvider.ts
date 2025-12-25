@@ -5,12 +5,12 @@ import {
   DisplayMode,
   DISPLAY_MODES,
   UI_CONSTANTS,
-} from "../constants";
-import { ICacheService } from "../interfaces/ICacheService";
-import { IVcsProvider } from "../interfaces/IVcsProvider";
-import { MergeRequest } from "../interfaces/types";
-import { GitService } from "../services/GitService";
-import { VcsProviderFactory } from "../services/VcsProviderFactory";
+} from "@constants";
+import { ICacheService } from "@interfaces/ICacheService";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
+import { MergeRequest } from "@interfaces/types";
+import { GitService } from "@services/GitService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
 import { VcsErrorHandler } from "./BlameHoverProvider";
 
 /**

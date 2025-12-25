@@ -1,12 +1,12 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { BlameDecorationProvider } from "../../../src/providers/BlameDecorationProvider";
-import { GitService } from "../../../src/services/GitService";
-import { VcsProviderFactory } from "../../../src/services/VcsProviderFactory";
-import { CacheService } from "../../../src/services/CacheService";
-import { IVcsProvider } from "../../../src/interfaces/IVcsProvider";
-import { MergeRequest } from "../../../src/interfaces/types";
+import { BlameDecorationProvider } from "@providers/BlameDecorationProvider";
+import { GitService } from "@services/GitService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
+import { CacheService } from "@services/CacheService";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
+import { MergeRequest } from "@types";
 
 suite("BlameDecorationProvider", () => {
   let decorationProvider: BlameDecorationProvider;

@@ -1,18 +1,18 @@
 import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
-import { BlameHoverProvider } from "../../../src/providers/BlameHoverProvider";
-import { GitService } from "../../../src/services/GitService";
-import { VcsProviderFactory } from "../../../src/services/VcsProviderFactory";
-import { CacheService } from "../../../src/services/CacheService";
-import { IVcsProvider } from "../../../src/interfaces/IVcsProvider";
+import { BlameHoverProvider } from "@providers/BlameHoverProvider";
+import { GitService } from "@services/GitService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
+import { CacheService } from "@services/CacheService";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
 import {
   MergeRequest,
   VcsResult,
   VcsError,
   VcsErrorType,
   RemoteInfo,
-} from "../../../src/interfaces/types";
+} from "@types";
 
 suite("BlameHoverProvider", () => {
   let blameHoverProvider: BlameHoverProvider;

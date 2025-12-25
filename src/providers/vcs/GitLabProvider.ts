@@ -1,14 +1,14 @@
-import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "../../constants";
-import { IVcsProvider } from "../../interfaces/IVcsProvider";
+import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "@constants";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
 import {
   MergeRequest,
   VcsResult,
   RemoteInfo,
   VcsErrorType,
   GitLabMR,
-} from "../../interfaces/types";
-import { logger } from "../../services/ErrorLogger";
-import { parseGitLabRemote, isGitLabRemote } from "../../utils/remoteParser";
+} from "@interfaces/types";
+import { logger } from "@services/ErrorLogger";
+import { parseGitLabRemote, isGitLabRemote } from "@utils/remoteParser";
 
 /**
  * GitLab VCS provider implementation

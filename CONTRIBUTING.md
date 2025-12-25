@@ -174,6 +174,50 @@ For detailed architecture documentation, see [`ref/architecture.md`](ref/archite
 - Use ES modules only (`import`/`export`, no CommonJS `require`)
 - Add JSDoc comments for all public interfaces and methods
 
+### Import Guidelines
+
+**Use TypeScript path aliases for cross-layer imports** - Enforced by ESLint `no-restricted-imports` rule.
+
+**Available Path Aliases**:
+
+| Alias | Resolves To | Example |
+|-------|-------------|---------|
+| `@src` | `src/` | Root src files (extension.ts) |
+| `@constants` | `src/constants` | Configuration keys, commands |
+| `@types` | `src/types` | Type definitions |
+| `@interfaces` | `src/interfaces` | Interface definitions |
+| `@services` | `src/services` | Service layer |
+| `@providers` | `src/providers` | Provider implementations |
+| `@utils` | `src/utils` | Utility functions |
+| `@test-helpers` | `test/suite/e2e/helpers` | E2E test utilities |
+
+**Rules**:
+
+```typescript
+✅ // DO: Use path aliases for cross-layer imports
+import { CONFIG_KEYS } from "@constants";
+import { GitService } from "@services/GitService";
+import { IVcsProvider } from "@interfaces";
+
+✅ // DO: Use relative imports within same folder
+import { GitLabProvider } from "./GitLabProvider";
+
+✅ // DO: Use relative imports for child folders
+import { GitLabProvider } from "./vcs/GitLabProvider";
+
+❌ // DON'T: Use parent directory imports (enforced by ESLint)
+import { CONFIG_KEYS } from "../../constants";
+import { GitService } from "../services/GitService";
+```
+
+**Why Path Aliases**:
+1. **Refactor-safe**: Moving files doesn't break imports
+2. **Clear dependencies**: Explicit architectural layers
+3. **Better IDE support**: Improved auto-completion and navigation
+4. **Enforced architecture**: ESLint prevents incorrect cross-layer imports
+
+**Note**: `tsc-alias` resolves path aliases at compile time for test files. Pre-commit hook enforces `no-restricted-imports` rule.
+
 ### Code Comments Philosophy
 
 **Core Principle: Comment the "WHY", not the "WHAT"**

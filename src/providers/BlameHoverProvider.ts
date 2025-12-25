@@ -1,10 +1,10 @@
 import * as vscode from "vscode";
-import { TIME_CONSTANTS, UI_CONSTANTS } from "../constants";
-import { ICacheService } from "../interfaces/ICacheService";
-import { IVcsProvider } from "../interfaces/IVcsProvider";
-import { MergeRequest, BlameInfo, VcsError } from "../interfaces/types";
-import { GitService } from "../services/GitService";
-import { VcsProviderFactory } from "../services/VcsProviderFactory";
+import { TIME_CONSTANTS, UI_CONSTANTS } from "@constants";
+import { ICacheService } from "@interfaces/ICacheService";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
+import { MergeRequest, BlameInfo, VcsError } from "@interfaces/types";
+import { GitService } from "@services/GitService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
 
 /**
  * Callback for handling VCS errors with UI

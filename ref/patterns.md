@@ -8,18 +8,153 @@
 - **ES2022 target**: Modern JavaScript features available
 - **ESLint**: TypeScript-aware linting rules
 
-### Import Style
+### Import Patterns
 
+**Use TypeScript path aliases for cross-layer imports** - Enforced by ESLint `no-restricted-imports` rule.
+
+#### Path Alias Reference
+
+| Alias | Resolves To | Use Cases |
+|-------|-------------|-----------|
+| `@src` | `src/` | Extension entry point (extension.ts) |
+| `@constants` | `src/constants` | Configuration keys, commands, defaults |
+| `@types` | `src/types` | Shared type definitions |
+| `@interfaces` | `src/interfaces` | Interface definitions (IVcsProvider, ICacheService) |
+| `@services` | `src/services` | Service layer (GitService, CacheService, TokenService) |
+| `@providers` | `src/providers` | Provider implementations (GitLabProvider, GitHubProvider) |
+| `@utils` | `src/utils` | Utility functions (remoteParser, etc.) |
+| `@test-helpers` | `test/suite/e2e/helpers` | E2E test utilities |
+
+#### Import Examples by Category
+
+**Constants and Configuration**:
 ```typescript
-// VS Code API first
-import * as vscode from "vscode";
+✅ // DO: Use @constants alias
+import { CONFIG_KEYS, COMMANDS, HTTP_STATUS } from "@constants";
 
-// Internal types
-import { MergeRequest, BlameInfo } from "../types";
+❌ // DON'T: Use relative imports
+import { CONFIG_KEYS } from "../../constants";
+```
 
-// Internal services/utilities
+**Types and Interfaces**:
+```typescript
+✅ // DO: Use @types and @interfaces aliases
+import { MergeRequest, BlameInfo } from "@types";
+import { IVcsProvider, ICacheService } from "@interfaces";
+
+❌ // DON'T: Use relative imports
+import { MergeRequest } from "../../types";
+import { IVcsProvider } from "../interfaces/IVcsProvider";
+```
+
+**Services**:
+```typescript
+✅ // DO: Use @services alias
+import { GitService } from "@services/GitService";
+import { CacheService } from "@services/CacheService";
+import { TokenService } from "@services/TokenService";
+import { logger } from "@services/ErrorLogger";
+
+❌ // DON'T: Use relative imports
 import { GitService } from "../services/GitService";
 ```
+
+**Providers**:
+```typescript
+✅ // DO: Use @providers alias
+import { GitLabProvider } from "@providers/vcs/GitLabProvider";
+import { GitHubProvider } from "@providers/vcs/GitHubProvider";
+import { BlameHoverProvider } from "@providers/BlameHoverProvider";
+
+❌ // DON'T: Use relative imports
+import { GitLabProvider } from "../../providers/vcs/GitLabProvider";
+```
+
+**Utilities**:
+```typescript
+✅ // DO: Use @utils alias
+import { parseRemoteUrl } from "@utils/remoteParser";
+
+❌ // DON'T: Use relative imports
+import { parseRemoteUrl } from "../utils/remoteParser";
+```
+
+**Test Helpers**:
+```typescript
+✅ // DO: Use @test-helpers alias (in test files)
+import { waitForGitRepository, HoverTrigger } from "@test-helpers";
+
+❌ // DON'T: Use relative imports
+import { waitForGitRepository } from "./helpers";
+```
+
+#### Same-Folder Imports (Allowed)
+
+```typescript
+✅ // ALLOWED: Relative imports within same folder
+import { GitLabProvider } from "./GitLabProvider";
+import { GitHubProvider } from "./GitHubProvider";
+
+✅ // ALLOWED: Child folder imports
+import { GitLabProvider } from "./vcs/GitLabProvider";
+
+✅ // ALLOWED: Barrel exports (index.ts)
+import { IVcsProvider, ICacheService } from "."; // From index.ts
+```
+
+#### Forbidden Patterns
+
+```typescript
+❌ // FORBIDDEN: Parent directory imports (enforced by ESLint)
+import { CONFIG_KEYS } from "../../constants";
+import { GitService } from "../services/GitService";
+import { MergeRequest } from "../../types";
+```
+
+**ESLint Rule**: `no-restricted-imports` with pattern `"../*"` - Triggers error on commit.
+
+#### Import Ordering Convention
+
+```typescript
+// 1. VS Code API first
+import * as vscode from "vscode";
+
+// 2. Type imports
+import { MergeRequest, BlameInfo } from "@types";
+import { IVcsProvider } from "@interfaces";
+
+// 3. Service imports
+import { GitService } from "@services/GitService";
+import { CacheService } from "@services/CacheService";
+
+// 4. Provider imports
+import { GitLabProvider } from "@providers/vcs/GitLabProvider";
+
+// 5. Utility imports
+import { parseRemoteUrl } from "@utils/remoteParser";
+
+// 6. Constant imports
+import { CONFIG_KEYS, COMMANDS } from "@constants";
+
+// 7. Same-folder relative imports
+import { localHelper } from "./localHelper";
+```
+
+**Note**: ESLint `import/order` rule enforces alphabetical ordering within each group.
+
+#### Why Path Aliases?
+
+1. **Refactor-safe**: Moving files doesn't break imports across layers
+2. **Clear dependencies**: Explicit architectural layer separation (`@services` vs `@providers` vs `@utils`)
+3. **Better IDE support**: Improved auto-completion and navigation
+4. **Enforced architecture**: ESLint prevents incorrect cross-layer imports (e.g., `../../services`)
+
+#### Technical Implementation
+
+- **TypeScript**: `tsconfig.json` defines path mappings (`"@constants": ["src/constants"]`)
+- **Runtime**: esbuild resolves aliases during bundling
+- **Tests**: `tsc-alias` resolves aliases at compile time for test files
+- **Enforcement**: ESLint `no-restricted-imports` rule prevents `../*` imports (pre-commit hook)
 
 ### Async/Await
 

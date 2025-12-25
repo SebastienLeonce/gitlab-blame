@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { VCS_PROVIDERS, SECRET_KEYS } from "../constants";
+import { VCS_PROVIDERS, SECRET_KEYS } from "@constants";
 
 /**
  * Manages tokens for multiple VCS providers

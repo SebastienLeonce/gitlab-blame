@@ -12,4 +12,4 @@ export {
   VcsResult,
   VcsError,
   VcsErrorType,
-} from "../interfaces/types";
+} from "@interfaces/types";

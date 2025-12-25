@@ -1,6 +1,6 @@
 import * as vscode from "vscode";
 import * as path from "path";
-import type { ExtensionApi } from "../../../../src/extension";
+import type { ExtensionApi } from "@src/extension";
 
 /** Extension ID */
 const EXTENSION_ID = "sebastien-dev.gitlab-blame";

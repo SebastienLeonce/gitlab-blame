@@ -1,4 +1,4 @@
-import { IVcsProvider } from "../interfaces/IVcsProvider";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
 
 /**
  * Factory for creating and managing VCS provider instances

@@ -77,6 +77,23 @@
         "enforceConst": true,
         "detectObjects": false
       }
+    ],
+    "no-restricted-imports": [
+      "error",
+      {
+        "patterns": [
+          {
+            "group": ["../*"],
+            "message": "Parent directory imports are forbidden. Use path aliases (@services, @providers, @interfaces, @utils, @types, @constants) instead."
+          }
+        ]
+      }
+    ],
+    "import/no-useless-path-segments": [
+      "error",
+      {
+        "noUselessIndex": true
+      }
     ]
   },
   "settings": {

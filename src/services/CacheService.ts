@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
-import { CONFIG_KEYS, DEFAULTS, TIME_CONSTANTS } from "../constants";
-import { ICacheService } from "../interfaces/ICacheService";
-import { MergeRequest, GitAPI, Repository } from "../interfaces/types";
+import { CONFIG_KEYS, DEFAULTS, TIME_CONSTANTS } from "@constants";
+import { ICacheService } from "@interfaces/ICacheService";
+import { MergeRequest, GitAPI, Repository } from "@interfaces/types";
 
 interface CacheEntry {
   value: MergeRequest | null;

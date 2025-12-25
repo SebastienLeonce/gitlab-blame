@@ -1,6 +1,7 @@
 import * as vscode from "vscode";
-import { BLAME_CONSTANTS } from "../constants";
-import { BlameInfo } from "../types";
+import { BLAME_CONSTANTS } from "@constants";
+import { BlameInfo } from "@types";
+// eslint-disable-next-line no-restricted-imports
 import { GitExtension, API, Repository } from "../types/git";
 import { logger } from "./ErrorLogger";
 

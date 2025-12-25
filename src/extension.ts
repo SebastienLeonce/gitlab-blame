@@ -7,18 +7,18 @@ import {
   VCS_PROVIDERS,
   DISPLAY_MODES,
   DisplayMode,
-} from "./constants";
-import { IVcsProvider } from "./interfaces/IVcsProvider";
-import { VcsError, VcsErrorType } from "./interfaces/types";
-import { BlameDecorationProvider } from "./providers/BlameDecorationProvider";
-import { BlameHoverProvider } from "./providers/BlameHoverProvider";
-import { GitHubProvider } from "./providers/vcs/GitHubProvider";
-import { GitLabProvider } from "./providers/vcs/GitLabProvider";
-import { CacheService } from "./services/CacheService";
-import { logger } from "./services/ErrorLogger";
-import { GitService } from "./services/GitService";
-import { TokenService } from "./services/TokenService";
-import { VcsProviderFactory } from "./services/VcsProviderFactory";
+} from "@constants";
+import { IVcsProvider } from "@interfaces/IVcsProvider";
+import { VcsError, VcsErrorType } from "@interfaces/types";
+import { BlameDecorationProvider } from "@providers/BlameDecorationProvider";
+import { BlameHoverProvider } from "@providers/BlameHoverProvider";
+import { GitHubProvider } from "@providers/vcs/GitHubProvider";
+import { GitLabProvider } from "@providers/vcs/GitLabProvider";
+import { CacheService } from "@services/CacheService";
+import { logger } from "@services/ErrorLogger";
+import { GitService } from "@services/GitService";
+import { TokenService } from "@services/TokenService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
 
 // Extension-wide output channel for error logging
 let outputChannel: vscode.OutputChannel;
