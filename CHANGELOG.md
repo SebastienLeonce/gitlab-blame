@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - **MEDIUM**: Added explicit permissions declarations for future-proofing (pull-requests: read, id-token: write)
   - **MEDIUM**: Added explicit package step before publish for better error visibility
   - **LOW**: Fixed unsafe heredoc output to prevent shell metacharacter interpretation
+- **Auto-Tag Workflow** - Improved reliability and robustness
+  - Added concurrency control to prevent race conditions during rapid version changes
+  - Added explicit permissions for workflow run queries and OIDC (future-proofing)
+  - Added workflow_dispatch trigger for manual testing and recovery scenarios
 
 ### Security
 

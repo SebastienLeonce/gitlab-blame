@@ -5,12 +5,21 @@ on:
     branches: [main]
     paths:
       - 'package.json'
+  workflow_dispatch:  # Allow manual trigger for testing/recovery
 
 jobs:
   auto-tag:
     runs-on: ubuntu-latest
+
+    # Prevent concurrent auto-tag jobs (race conditions during rapid releases)
+    concurrency:
+      group: auto-tag
+      cancel-in-progress: false  # Let in-progress job complete
+
     permissions:
       contents: write  # Required to create and push tags
+      actions: read    # For gh CLI to query workflow runs
+      id-token: write  # For OIDC/provenance (future-proofing)
 
     steps:
       - name: Checkout code
