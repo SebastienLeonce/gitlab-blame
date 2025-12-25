@@ -12,6 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+
+### Security
+
+## [1.4.2] - 2025-12-25
+
+### Fixed
 - **CI/CD Workflow** - Fixed 5 bugs in publish workflow
   - **CRITICAL**: GitHub Release changelog URL now correctly compares previous tag to current tag (was comparing tag to itself, showing 0 commits)
   - **HIGH**: Release commits no longer appear in user-facing changelog (excluded using `HEAD^`)
@@ -22,8 +28,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Added concurrency control to prevent race conditions during rapid version changes
   - Added explicit permissions for workflow run queries and OIDC (future-proofing)
   - Added workflow_dispatch trigger for manual testing and recovery scenarios
-
-### Security
 
 ## [1.4.1] - 2025-12-25
 
