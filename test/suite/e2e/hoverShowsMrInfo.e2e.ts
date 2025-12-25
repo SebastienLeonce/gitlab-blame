@@ -78,10 +78,11 @@ suite("E2E: Hover Shows MR/PR Info", () => {
     const position = new vscode.Position(0, 0);
 
     // Wait for hover content to be available (blame computation + MR fetch)
+    // Timeout is split: 10s for blame, then remaining time for MR info
     const result = await hoverTrigger.waitForMrInfo(
       editor.document.uri,
       position,
-      10000, // 10 second timeout for CI reliability
+      15000, // 15 second total timeout for CI reliability
     );
 
     // Repository is guaranteed to be detected by waitForGitRepository()

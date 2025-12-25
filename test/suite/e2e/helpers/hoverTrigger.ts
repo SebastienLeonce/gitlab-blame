@@ -132,15 +132,49 @@ export class HoverTrigger {
   }
 
   /**
+   * Wait for hover content to be available (git blame completed)
+   */
+  async waitForHoverContent(
+    uri: vscode.Uri,
+    position: vscode.Position,
+    timeout = 10000,
+  ): Promise<boolean> {
+    const start = Date.now();
+    while (Date.now() - start < timeout) {
+      const markdown = await this.getHoverMarkdown(uri, position);
+      if (markdown.length > 0) {
+        return true;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 500));
+    }
+    return false;
+  }
+
+  /**
    * Wait for hover to contain MR info (with timeout)
+   * First waits for hover content to exist, then waits for MR info
    */
   async waitForMrInfo(
     uri: vscode.Uri,
     position: vscode.Position,
     timeout = 5000,
   ): Promise<HoverMrResult> {
+    // First wait for ANY hover content (git blame completed)
+    const hasContent = await this.waitForHoverContent(uri, position, timeout);
+    if (!hasContent) {
+      // No hover content available even after waiting
+      return {
+        hasMr: false,
+        rawContent: "",
+      };
+    }
+
+    // Now wait for MR info specifically
     const start = Date.now();
-    while (Date.now() - start < timeout) {
+    const remainingTime = Math.max(0, timeout - (Date.now() - start));
+    const endTime = Date.now() + remainingTime;
+
+    while (Date.now() < endTime) {
       const result = await this.checkForMrInfo(uri, position);
       if (result.hasMr) {
         return result;
