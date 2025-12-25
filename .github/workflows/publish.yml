@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # For creating GitHub releases
+      contents: write     # For creating GitHub releases and pushing tags
+      pull-requests: read # For future PR integration (optional but good practice)
+      id-token: write     # For OIDC/provenance (future-proofing)
 
     steps:
       - name: Checkout code
@@ -59,6 +61,12 @@ jobs:
 
       - name: Build extension
         run: npm run build
+
+      - name: Package extension
+        run: npm run package
+
+      - name: List generated package
+        run: ls -lh *.vsix
 
       - name: Run tests
         run: |
@@ -145,15 +153,18 @@ jobs:
             # First release - get all commits
             CHANGELOG=$(git log --pretty=format:"- %s (%h)" --reverse)
           else
-            # Get commits since previous tag
-            CHANGELOG=$(git log ${PREV_TAG}..HEAD --pretty=format:"- %s (%h)" --reverse)
+            # Get commits since previous tag (exclude release commit using HEAD^)
+            CHANGELOG=$(git log ${PREV_TAG}..HEAD^ --pretty=format:"- %s (%h)" --reverse)
           fi
 
           # Save to file (escape for GitHub Actions)
           echo "$CHANGELOG" > /tmp/changelog.txt
-          echo "CHANGELOG<<EOF" >> $GITHUB_OUTPUT
-          cat /tmp/changelog.txt >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "CHANGELOG<<EOF"
+            cat /tmp/changelog.txt
+            echo "EOF"
+          } >> $GITHUB_OUTPUT
+          echo "PREV_TAG=${PREV_TAG}" >> $GITHUB_OUTPUT
 
       # Create GitHub Release
       - name: Create GitHub Release
@@ -166,7 +177,7 @@ jobs:
 
             ${{ steps.changelog.outputs.CHANGELOG }}
 
-            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ github.ref_name }}...HEAD
+            **Full Changelog**: https://github.com/${{ github.repository }}/compare/${{ steps.changelog.outputs.PREV_TAG }}...${{ github.ref_name }}
           files: |
             *.vsix
           draft: false
