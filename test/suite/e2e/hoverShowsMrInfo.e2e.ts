@@ -75,13 +75,13 @@ suite("E2E: Hover Shows MR/PR Info", () => {
     const filePath = fixtureRepo.getFilePath(TEST_DATA.TEST_FILE);
     const editor = await openFile(filePath);
 
-    // Git blame is computed asynchronously after repository detection
-    await sleep(TEST_TIMING.BLAME_COMPUTATION_MS);
-
     const position = new vscode.Position(0, 0);
-    const result = await hoverTrigger.checkForMrInfo(
+
+    // Wait for hover content to be available (blame computation + MR fetch)
+    const result = await hoverTrigger.waitForMrInfo(
       editor.document.uri,
       position,
+      10000, // 10 second timeout for CI reliability
     );
 
     // Repository is guaranteed to be detected by waitForGitRepository()
