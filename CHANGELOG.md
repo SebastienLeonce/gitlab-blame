@@ -15,6 +15,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.4.4] - 2025-12-25
+
+### Fixed
+- **Release Skill** - Removed manual tag pushing from release workflow
+  - Skill now relies entirely on auto-tag workflow for tag creation
+  - Prevents conflicts with automated CI/CD tagging
+
 ## [1.4.3] - 2025-12-25
 
 ### Fixed
