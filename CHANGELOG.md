@@ -15,6 +15,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.4.1] - 2025-12-25
+
+### Fixed
+- **Documentation** - Corrected architecture diagrams and API documentation
+  - Added missing `BlameDecorationProvider` to project structure diagrams
+  - Fixed output channel name from "Git Blame MR/PR Link" to "GitLab Blame" in troubleshooting guides
+  - Removed obsolete `GitLabService` references from architecture documentation
+  - Updated test counts to current values (325 tests across unit and E2E suites)
+  - Documented GitHub parsing functions (`parseGitHubRemote`, `isGitHubRemote`, `GitHubRemoteInfo`) in utilities API reference
+
 ## [1.4.0] - 2025-12-25
 
 ### Added
