@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.4.0] - 2025-12-25
+
+### Added
 - **Automated Tagging** - Tags created automatically when package.json version changes
   - Auto-tag workflow (`.github/workflows/auto-tag.yml`) detects version changes on main branch
   - Creates and pushes version tags without manual intervention
