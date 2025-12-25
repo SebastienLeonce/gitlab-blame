@@ -1,5 +1,5 @@
 ---
-description: Automate release process - bump version, update CHANGELOG, push tags. Use when user asks to create/publish a release, or says "/release"
+description: Automate release process - bump version, update CHANGELOG, push commits. Auto-tag workflow handles tagging. Use when user asks to create/publish a release, or says "/release"
 ---
 
 # Release Automation
@@ -27,15 +27,16 @@ Activate this skill when the user:
 3. **Version bump**
    - Asks for release type (patch/minor/major)
    - Runs appropriate npm version script
-   - Creates commit and git tag
+   - Creates commit (tag is created locally but NOT pushed)
 
 4. **Push to remote**
-   - Pushes version bump commit to main
-   - Pushes tag to trigger CI/CD workflow
+   - Pushes ONLY the version bump commit to main
+   - ⚠️ **CRITICAL**: Does NOT push tags manually
+   - Auto-tag workflow automatically detects version change and creates tag after CI passes
 
 5. **Monitoring**
    - Provides GitHub Actions workflow URL
-   - Lists what the CI will do
+   - Lists what the automated workflows will do
 
 ## Usage Examples
 
@@ -44,6 +45,22 @@ User says:
 - `/release minor` → Create minor release
 - `/release` → Ask for release type
 - `Create a release` → Full interactive release process
+
+## ⚠️ CRITICAL RULE: Never Push Tags Manually
+
+**This project uses automated tagging starting from v1.4.0.**
+
+✅ **ALWAYS DO**:
+- Push only commits: `git push origin main`
+- Let auto-tag workflow create and push tags
+- Wait for CI to pass before tag creation
+
+❌ **NEVER DO**:
+- `git push origin v1.x.x` (manual tag push)
+- `git push --tags` (push all tags)
+- Any manual tag creation after version bump
+
+**Why**: The auto-tag workflow ensures CI passes before creating tags, preventing broken releases.
 
 ## Step-by-Step Instructions
 
@@ -78,9 +95,11 @@ When this skill is invoked:
 - Show success message
 
 ### 6. Push to Remote
-- Push commit: `git push origin main`
-- **Automatic**: Auto-tag workflow detects version change and creates tag
+- **ONLY run this command**: `git push origin main`
+- ⚠️ **DO NOT** run: `git push origin v{version}` or `git push --tags`
+- **Automatic**: Auto-tag workflow detects version change and creates tag (after CI passes)
 - **Automatic**: Tag triggers publish workflow
+- Confirm to user: "Pushed commits to main. Auto-tag workflow will create tag after CI passes (~1-2 min)"
 
 ### 7. Provide Monitoring Info
 - Show GitHub Actions URL: https://github.com/SebastienLeonce/gitlab-blame/actions
@@ -162,17 +181,23 @@ Claude:
    [Shows preview]
 
 4. ⬆️  Bumping version 1.3.0 → 1.3.1...
+   - Commit created: chore(release): bump to v1.3.1
 
 5. 🚀 Pushing to main...
-   - Commit pushed ✅
+   - Running: git push origin main
+   - ✅ Commits pushed successfully
 
-6. 🤖 Automatic tagging workflow:
-   - Detecting version change... ⏳
-   - Creating tag v1.3.1... ✅
-   - Tag pushed, triggering publish... ✅
+6. 🤖 Automated workflow now running:
+   - Auto-tag workflow will detect version change (~1-2 min)
+   - Workflow will create and push tag v1.3.1 after CI passes
+   - Tag will trigger publish workflow
 
-7. 📊 Monitor release: https://github.com/.../actions
-   - Auto-tag workflow: ~30 seconds
-   - Publish workflow: ~5-8 minutes
-   - Total: ~5-10 minutes
+7. 📊 Monitor progress: https://github.com/.../actions
+   - Watch for "Auto-tag" workflow to complete
+   - Then "Publish" workflow will start
+   - Total time: ~5-10 minutes
+
+   After completion, verify at:
+   - VS Code Marketplace: marketplace.visualstudio.com/...
+   - Open VSX Registry: open-vsx.org/...
 ```
