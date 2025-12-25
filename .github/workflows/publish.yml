@@ -67,6 +67,16 @@ jobs:
         env:
           DISPLAY: ':99.0'
 
+      - name: Prepare E2E tests
+        run: npm run pretest:e2e
+        timeout-minutes: 5
+
+      - name: Run E2E tests
+        run: xvfb-run -a npm run test:e2e
+        timeout-minutes: 10
+        env:
+          DISPLAY: ':99.0'
+
       # Publish to Open VSX Registry
       - name: Publish to Open VSX Registry
         uses: HaaLeo/publish-vscode-extension@v2
@@ -101,6 +111,28 @@ jobs:
             echo "💡 You may need to publish to Open VSX manually:"
             echo "    npx ovsx publish -p <OPEN_VSX_TOKEN>"
           fi
+
+      # Enhanced error reporting
+      - name: Publish failure notice
+        if: failure()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "❌ PUBLISH WORKFLOW FAILED"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo ""
+          echo "Version: ${{ steps.get_version.outputs.VERSION }}"
+          echo "Tag: ${{ github.ref_name }}"
+          echo ""
+          echo "📝 RECOVERY STEPS:"
+          echo ""
+          echo "1. Fix the failing tests/checks locally"
+          echo "2. Commit and push fixes to main"
+          echo "3. Bump to next patch version:"
+          echo "   npm run version:patch"
+          echo "   git push origin main"
+          echo ""
+          echo "See: ref/release-process.md §Troubleshooting"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 
       # Generate changelog for this release
       - name: Generate changelog

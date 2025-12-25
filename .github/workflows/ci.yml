@@ -39,6 +39,16 @@ jobs:
         env:
           DISPLAY: ":99.0"
 
+      - name: Prepare E2E tests
+        run: npm run pretest:e2e
+        timeout-minutes: 5
+
+      - name: Run E2E tests
+        run: xvfb-run -a npm run test:e2e
+        timeout-minutes: 10
+        env:
+          DISPLAY: ":99.0"
+
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v4
         with:

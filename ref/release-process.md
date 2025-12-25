@@ -18,23 +18,23 @@ The extension follows **Semantic Versioning (SemVer)**: `MAJOR.MINOR.PATCH`
 
 ## Release Workflow
 
-### Current Release Process (Manual Tagging)
+### Current Release Process (Automated Tagging)
 
-The project uses **manual tagging** with automated publishing:
+The project uses **automated tagging** with automated publishing:
 
 1. **Developer bumps version** using npm scripts (creates commit and tag locally)
 2. **Developer pushes commit** to main branch
-3. **Developer pushes tag** to remote (`git push origin v<version>`)
-4. **GitHub Actions detects tag push** and triggers publish workflow
-5. **CI runs quality checks** (lint, typecheck, test, build)
-6. **CI publishes to VS Code Marketplace** (if checks pass)
-7. **CI creates GitHub Release** with changelog
+3. **Auto-tag workflow detects version change** and waits for CI to pass
+4. **Auto-tag workflow creates and pushes tag** automatically
+5. **GitHub Actions detects tag push** and triggers publish workflow
+6. **CI runs quality checks** (lint, typecheck, test, E2E tests, build)
+7. **CI publishes to VS Code Marketplace** (if checks pass)
+8. **CI creates GitHub Release** with changelog
 
 **Workflow Summary**:
 ```bash
 npm run version:patch         # Bump version (creates commit + tag)
-git push origin main          # Push version bump commit
-git push origin v<version>    # Push tag → triggers publish workflow
+git push origin main          # Push version bump commit → automatic tagging
 ```
 
 ---
@@ -72,23 +72,25 @@ npm run version:major
 ### 3. Push to Remote
 
 ```bash
-# Push the version bump commit
+# Push the version bump commit (automatic tagging will trigger)
 git push origin main
-
-# Push the tag to trigger publish workflow
-git push origin v<version>
 ```
+
+**What happens automatically**:
+1. Auto-tag workflow detects `package.json` version change
+2. Workflow waits for CI to pass (up to 10 minutes)
+3. Workflow creates and pushes tag: `v<version>`
+4. Tag push triggers publish workflow
 
 **Example for v0.2.1**:
 ```bash
 npm run version:patch  # Creates v0.2.1 tag locally
-git push origin main
-git push origin v0.2.1  # Triggers GitHub Actions publish workflow
+git push origin main   # Triggers automatic tagging → publish workflow
 ```
 
-**Alternative - Push commit and tag together**:
+**Manual tag fallback** (if automatic tagging fails):
 ```bash
-git push origin main --follow-tags
+git push origin v0.2.1  # Manually push tag
 ```
 
 ### 4. GitHub Actions Publish Workflow
@@ -351,79 +353,125 @@ See `CHANGELOG.md` for detailed version history.
 
 ---
 
-## Optional: Automatic Tagging (Future Enhancement)
+## Automated Tagging Workflow
 
-Currently, tags are created **manually** using `npm version`. If you want to automate tag creation when `package.json` version changes, you can add a GitHub Actions workflow.
+### How It Works
 
-### How Automatic Tagging Would Work
+Starting from v1.4.0, tags are created **automatically** when `package.json` version changes:
 
-1. Developer runs `npm run version:patch` (creates commit, bumps version)
-2. Developer pushes commit: `git push origin main`
-3. **GitHub Actions detects `package.json` change**
-4. **Workflow compares versions** (current vs previous commit)
-5. **If version changed, workflow creates and pushes tag**
-6. **Tag push triggers publish workflow** (existing `publish.yml`)
+1. Developer runs `npm run version:patch` (creates commit with version bump)
+2. Developer pushes to main: `git push origin main`
+3. Auto-tag workflow (`.github/workflows/auto-tag.yml`) detects package.json change
+4. Workflow waits for CI to pass (up to 10 min)
+5. Workflow creates and pushes tag: `v1.3.1`
+6. Tag triggers publish workflow
+7. Publish workflow runs E2E tests + quality checks
+8. If all pass, publishes to marketplaces
 
-### Example Auto-Tag Workflow
+### Developer Workflow
 
-Create `.github/workflows/version-tag.yml`:
-
-```yaml
-name: Auto Tag on Version Change
-
-on:
-  push:
-    branches: [main]
-    paths:
-      - 'package.json'  # Only run when package.json changes
-
-jobs:
-  check-version:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write  # Required to create tags
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 2  # Fetch current + previous commit
-
-      - name: Check if version changed
-        id: version_check
-        run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          git checkout HEAD~1 -- package.json
-          PREVIOUS=$(node -p "require('./package.json').version")
-          git checkout HEAD -- package.json
-
-          if [ "$CURRENT" != "$PREVIOUS" ]; then
-            echo "changed=true" >> $GITHUB_OUTPUT
-            echo "version=$CURRENT" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create and push tag
-        if: steps.version_check.outputs.changed == 'true'
-        run: |
-          TAG="v${{ steps.version_check.outputs.version }}"
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git tag -a "$TAG" -m "Release $TAG"
-          git push origin "$TAG"
+**Before (Manual)**:
+```bash
+npm run version:patch
+git push origin main
+git push origin v1.3.1  # Manual tag push
 ```
 
-### Pros and Cons
+**After (Automatic)**:
+```bash
+npm run version:patch
+git push origin main  # That's it! Tag created automatically
+```
 
-**Pros**:
-- ✅ Developers only need to run `npm version` and push
-- ✅ No need to manually push tags
-- ✅ Consistent tagging process
+### E2E Tests in CI
 
-**Cons**:
-- ❌ Less control over when tags are created
-- ❌ Tags created even for accidental version bumps
-- ❌ Requires careful management of `package.json` changes
+E2E tests now run in two places:
+1. **CI workflow** (`ci.yml`) - Every PR/push to main (catches issues early)
+2. **Publish workflow** (`publish.yml`) - Final validation before publishing
 
-**Current Decision**: Using **manual tagging** for better control.
+Both workflows use the same E2E test suite (~22 tests, 2-3 minutes execution time).
+
+---
+
+## Troubleshooting
+
+### Publish Failed After Tag Creation
+
+**Symptoms**: Tag v1.3.1 created, but publish workflow failed.
+
+**Recovery** (Recommended):
+```bash
+# Fix the issue
+git add .
+git commit -m "fix(test): resolve E2E test flakiness"
+git push origin main
+
+# Bump to new patch version
+npm run version:patch  # v1.3.2
+git push origin main
+```
+
+**Why new version is better**:
+- ✅ Clean git history (no force-push)
+- ✅ Clear audit trail
+- ✅ No tag deletion (avoids confusion)
+- ✅ SemVer compliant
+
+**Alternative** (Not Recommended):
+```bash
+# Delete failed tag and retry
+git tag -d v1.3.1
+git push origin :refs/tags/v1.3.1
+# Fix issues, then manual tag
+git tag v1.3.1
+git push origin v1.3.1
+```
+
+### E2E Tests Fail in CI
+
+**Policy**: E2E failures block both PR merges and releases.
+
+```bash
+# Reproduce locally
+npm run test:e2e
+
+# Fix and push
+git add .
+git commit -m "fix(e2e): resolve test issue"
+git push origin main
+```
+
+### Multiple Rapid Releases
+
+**Best Practice**: Wait for CI to complete before next version bump (~2-5 min).
+
+Check status: https://github.com/SebastienLeonce/gitlab-blame/actions
+
+**Why wait**:
+- Auto-tag workflow needs time to complete
+- Multiple concurrent publishes can cause conflicts
+- Marketplace may reject rapid updates
+
+### Auto-Tag Workflow Fails
+
+**Symptoms**: Version bumped and pushed, but no tag created.
+
+**Cause**: CI workflow may have failed before auto-tag could run.
+
+**Fix**:
+```bash
+# Check GitHub Actions for CI failure
+# Fix issues and push again
+git add .
+git commit -m "fix: resolve CI failure"
+git push origin main
+```
+
+**Manual fallback**:
+```bash
+# If auto-tag continues to fail
+git push origin v1.3.1  # Manually push tag
+```
 
 ---
 

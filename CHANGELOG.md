@@ -8,8 +8,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Automated Tagging** - Tags created automatically when package.json version changes
+  - Auto-tag workflow (`.github/workflows/auto-tag.yml`) detects version changes on main branch
+  - Creates and pushes version tags without manual intervention
+  - Waits for CI to pass before creating tags
+  - Triggers publish workflow automatically
+- **E2E Tests in CI** - E2E tests now run on every PR and push to main
+  - Added to `ci.yml` workflow alongside unit tests
+  - Also runs in publish workflow as final validation
+  - Blocks both PR merges and releases if failing
+- **Enhanced Quality Gates** - Improved CI/CD pipeline
+  - Concurrency control prevents conflicting releases
+  - Version validation ensures tag/package.json match
+  - Enhanced error reporting with recovery instructions
+  - Pre-push hook warns about automatic tagging
 
 ### Changed
+- **Developer Workflow Simplified** - No manual tag pushing required
+  - Before: `npm run version:patch && git push origin main && git push origin v1.3.1`
+  - After: `npm run version:patch && git push origin main`
+- **Release Documentation** - Updated for automated workflow
+  - `ref/release-process.md` now describes automated tagging with troubleshooting guide
+  - `CONTRIBUTING.md` updated with new developer workflow
+  - `CLAUDE.md` updated with release protocol and recovery procedures
+- **Publish Workflow Enhanced** - Now includes E2E tests before publishing
 
 ### Fixed
 

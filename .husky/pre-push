@@ -38,6 +38,27 @@ fi
 echo "✅ Fixture integrity verified"
 echo ""
 
+# Warn about version bumps (triggers automatic tagging)
+CURRENT_VERSION=$(node -p "require('./package.json').version" 2>/dev/null || echo "")
+if [ -n "$CURRENT_VERSION" ]; then
+  PREV_VERSION=$(git show HEAD:package.json 2>/dev/null | grep '"version"' | sed 's/.*"version": "\(.*\)".*/\1/' || echo "$CURRENT_VERSION")
+
+  if [ "$CURRENT_VERSION" != "$PREV_VERSION" ]; then
+    echo "🔍 Version change detected: $PREV_VERSION → $CURRENT_VERSION"
+    echo ""
+    echo "⚠️  This version bump will trigger automatic tagging and publishing."
+    echo ""
+    echo "   Make sure:"
+    echo "   ✅ All tests pass (including E2E)"
+    echo "   ✅ Documentation is updated"
+    echo "   ✅ CHANGELOG.md is updated"
+    echo ""
+    echo "Press Enter to continue, or Ctrl+C to abort..."
+    read -r
+  fi
+fi
+echo ""
+
 # Run full test suite with coverage
 echo "🧪 Running tests with coverage..."
 if ! npm run test:coverage; then

@@ -157,6 +157,49 @@ E2E tests now reliably detect the fixture Git repository using `waitForGitReposi
 
 ---
 
+## Release & CI/CD Protocol
+
+### Automated Release Workflow
+
+**Starting from v1.4.0, releases are automated:**
+
+1. `npm run version:patch` - Bump version, create commit
+2. `git push origin main` - Push to main
+3. **Automatic**: Auto-tag workflow detects version change
+4. **Automatic**: Workflow waits for CI to pass
+5. **Automatic**: Creates and pushes tag
+6. **Automatic**: Tag triggers publish workflow
+7. **Automatic**: E2E tests + quality checks run
+8. **Automatic**: Publishes to marketplace (if tests pass)
+
+### Important Rules
+
+**DO**:
+- ✅ Use `npm run version:patch|minor|major` for version bumps
+- ✅ Wait for CI (~2-5 min) before next release
+- ✅ Update CHANGELOG.md before version bump
+- ✅ Ensure all tests pass locally before pushing
+
+**DON'T**:
+- ❌ Manually create tags (`git tag v1.3.1`)
+- ❌ Manually push tags (`git push --tags`)
+- ❌ Create multiple version bumps rapidly
+- ❌ Force-push tags
+
+### Recovery from Failed Publish
+
+If publish fails after tag creation:
+```bash
+# Fix issue, then bump to new patch version
+npm run version:patch
+git push origin main
+# Automation retries with new version
+```
+
+See: `ref/release-process.md` §Troubleshooting
+
+---
+
 ## Git Hooks & Quality Gates
 
 **📖 Detailed documentation**: See `ref/quality-assurance.md`

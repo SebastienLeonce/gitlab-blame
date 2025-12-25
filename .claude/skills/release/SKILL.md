@@ -79,18 +79,23 @@ When this skill is invoked:
 
 ### 6. Push to Remote
 - Push commit: `git push origin main`
-- Push tag: `git push origin v{version}`
+- **Automatic**: Auto-tag workflow detects version change and creates tag
+- **Automatic**: Tag triggers publish workflow
 
 ### 7. Provide Monitoring Info
 - Show GitHub Actions URL: https://github.com/SebastienLeonce/gitlab-blame/actions
-- List CI workflow steps:
-  1. Verify version matches tag
-  2. Run typecheck, lint, build
-  3. Run tests
-  4. Publish to Open VSX Registry
-  5. Publish to VS Code Marketplace
-  6. Create GitHub Release with changelog
-- Mention typical completion time (~2-3 minutes)
+- Explain automation:
+  1. Auto-tag workflow detects version change (~30 seconds)
+  2. Creates and pushes tag v{version}
+  3. Tag triggers publish workflow
+  4. Publish workflow runs:
+     - Verify version matches tag
+     - Run typecheck, lint, build
+     - Run unit + E2E tests
+     - Publish to Open VSX Registry
+     - Publish to VS Code Marketplace
+     - Create GitHub Release with changelog
+- Mention typical completion time (~5-8 minutes total)
 - After workflow completes, verify on both marketplaces:
   - VS Code Marketplace: https://marketplace.visualstudio.com/items?itemName=sebastien-dev.gitlab-blame
   - Open VSX Registry: https://open-vsx.org/extension/sebastien-dev/gitlab-blame
@@ -103,6 +108,29 @@ When this skill is invoked:
 - **Network error during push** → Suggest retry
 - **Tag already exists** → Offer to delete and recreate OR bump to next version
 
+## Troubleshooting
+
+### Auto-Tag Workflow Fails
+- **Symptom**: Version bumped and pushed, but no tag created
+- **Cause**: CI workflow may have failed
+- **Fix**: Check GitHub Actions for CI failure, fix issues, push again
+
+### Manual Tag Fallback
+If automatic tagging fails:
+```bash
+# Manually create and push tag
+git tag v{version}
+git push origin v{version}
+```
+
+### E2E Tests Fail After Tag Creation
+- **Symptom**: Tag created, but publish workflow fails
+- **Recovery**: Create new patch version with fix
+```bash
+npm run version:patch
+git push origin main
+```
+
 ## Context Files
 
 Reference these files when executing this skill:
@@ -113,9 +141,9 @@ Reference these files when executing this skill:
 
 ## Important Notes
 
-- **Manual tagging workflow** - tags trigger publish, not automatic version detection
+- **Automatic tagging workflow** - Tags created automatically when version bumps pushed to main
 - **Semantic versioning**: patch = bug fixes, minor = features, major = breaking changes
-- **Quality gates** - Pre-push hooks enforce coverage thresholds and test success
+- **Quality gates** - E2E tests run in CI and must pass before publishing
 
 ## Example Flow
 
@@ -125,7 +153,7 @@ User: /release patch
 Claude:
 1. ✅ Git status clean, on main branch
 2. 🔍 Checking recent commits...
-   Found 3 commits since v0.2.2:
+   Found 3 commits since v1.3.0:
    - fix(hover): truncate long MR titles
    - test(provider): add coverage for error cases
    - docs(readme): update installation steps
@@ -133,12 +161,18 @@ Claude:
 3. 📝 Updating CHANGELOG.md...
    [Shows preview]
 
-4. ⬆️  Bumping version 0.2.2 → 0.2.3...
+4. ⬆️  Bumping version 1.3.0 → 1.3.1...
 
-5. 🚀 Pushing to remote...
+5. 🚀 Pushing to main...
    - Commit pushed ✅
-   - Tag v0.2.3 pushed ✅
 
-6. 📊 Monitor release: https://github.com/.../actions
-   CI will publish to marketplace in ~2-3 minutes
+6. 🤖 Automatic tagging workflow:
+   - Detecting version change... ⏳
+   - Creating tag v1.3.1... ✅
+   - Tag pushed, triggering publish... ✅
+
+7. 📊 Monitor release: https://github.com/.../actions
+   - Auto-tag workflow: ~30 seconds
+   - Publish workflow: ~5-8 minutes
+   - Total: ~5-10 minutes
 ```

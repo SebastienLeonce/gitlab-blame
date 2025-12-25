@@ -542,22 +542,25 @@ The project includes `.vscode/launch.json` for debugging:
 
 ## Release Process
 
-See [`ref/release-process.md`](ref/release-process.md) for detailed release instructions.
+**Current Process**: Automated tagging + publishing
 
-**Quick summary**:
+1. Make changes and commit to main (via PR)
+2. When ready to release:
+   ```bash
+   npm run version:patch   # or version:minor, version:major
+   git push origin main    # Triggers automation
+   ```
+3. Automation handles:
+   - Creates version tag (v1.3.1)
+   - Runs full CI (including E2E tests)
+   - Publishes to marketplace (if tests pass)
+   - Creates GitHub Release
 
-```bash
-# Bump version
-npm run version:patch   # 1.0.0 → 1.0.1
-npm run version:minor   # 1.0.0 → 1.1.0
-npm run version:major   # 1.0.0 → 2.0.0
+**Do NOT**:
+- ❌ Manually create tags
+- ❌ Manually push tags with `--tags`
 
-# Package extension
-npm run package         # Creates .vsix file
-
-# Publish to marketplace
-npm run publish         # Publishes to VS Code Marketplace and Open VSX
-```
+For full details, see [`ref/release-process.md`](ref/release-process.md).
 
 ## Getting Help
 

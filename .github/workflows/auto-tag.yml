@@ -1,0 +1,117 @@
+name: Auto Tag on Version Change
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'package.json'
+
+jobs:
+  auto-tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # Required to create and push tags
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # Fetch current + previous commit
+
+      - name: Check if version changed
+        id: version_check
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          git checkout HEAD~1 -- package.json
+          PREVIOUS=$(node -p "require('./package.json').version")
+          git checkout HEAD -- package.json
+
+          if [ "$CURRENT" != "$PREVIOUS" ]; then
+            echo "Version changed: $PREVIOUS → $CURRENT"
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "tag=v$CURRENT" >> $GITHUB_OUTPUT
+          else
+            echo "Version unchanged: $CURRENT"
+            echo "changed=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify CI passed
+        if: steps.version_check.outputs.changed == 'true'
+        run: |
+          # Wait for CI workflow to complete
+          echo "Waiting for CI workflow to complete..."
+
+          # Get CI workflow run ID for this commit
+          COMMIT_SHA="${{ github.sha }}"
+          WORKFLOW_ID="ci.yml"
+
+          # Poll for workflow completion (max 10 minutes)
+          for i in {1..60}; do
+            STATUS=$(gh run list \
+              --workflow="$WORKFLOW_ID" \
+              --commit="$COMMIT_SHA" \
+              --json status,conclusion \
+              --jq '.[0] | "\(.status):\(.conclusion)"' \
+              || echo "pending:")
+
+            echo "CI status: $STATUS (attempt $i/60)"
+
+            if [[ "$STATUS" == "completed:success" ]]; then
+              echo "✅ CI passed!"
+              exit 0
+            elif [[ "$STATUS" == completed:* ]]; then
+              echo "❌ CI failed with status: $STATUS"
+              echo "Not creating tag. Fix CI failures and re-run."
+              exit 1
+            fi
+
+            sleep 10
+          done
+
+          echo "⏱️ Timeout waiting for CI"
+          exit 1
+        env:
+          GH_TOKEN: ${{ github.token }}
+
+      - name: Check if tag already exists
+        if: steps.version_check.outputs.changed == 'true'
+        id: tag_exists
+        run: |
+          TAG="${{ steps.version_check.outputs.tag }}"
+          if git ls-remote --tags origin | grep -q "refs/tags/$TAG$"; then
+            echo "exists=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Tag $TAG already exists"
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+            echo "Tag $TAG does not exist"
+          fi
+
+      - name: Create and push tag
+        if: |
+          steps.version_check.outputs.changed == 'true' &&
+          steps.tag_exists.outputs.exists == 'false'
+        run: |
+          TAG="${{ steps.version_check.outputs.tag }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git tag -a "$TAG" -m "Release $TAG"
+          git push origin "$TAG"
+
+          echo "✅ Created and pushed tag: $TAG"
+
+      - name: Tag creation summary
+        if: always()
+        run: |
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 Auto-Tag Summary"
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "Version changed: ${{ steps.version_check.outputs.changed }}"
+          if [ "${{ steps.version_check.outputs.changed }}" == "true" ]; then
+            echo "Version: ${{ steps.version_check.outputs.version }}"
+            echo "Tag: ${{ steps.version_check.outputs.tag }}"
+            echo "Tag exists: ${{ steps.tag_exists.outputs.exists }}"
+          fi
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
