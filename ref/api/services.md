@@ -409,23 +409,6 @@ Get current cache entry count (across all providers).
 
 Clean up watchers and clear cache.
 
----
-
-## GitLabService (Deprecated)
-
-> **⚠️ Deprecated**: Use `GitLabProvider` from `src/providers/vcs/GitLabProvider.ts` instead.
-> This service will be removed in a future version.
-
-**Location**: `src/services/GitLabService.ts`
-
-**Migration**:
-- `GitLabService.getMergeRequestForCommit()` → `GitLabProvider.getMergeRequestForCommit()`
-- `GitLabService.parseRemoteUrl()` → `GitLabProvider.parseRemoteUrl()`
-- Error handling now returns `VcsResult` instead of showing UI directly
-
-### Error Types (Deprecated)
-
-Use `VcsErrorType` from `src/interfaces/types.ts` instead.
 
 ```typescript
 // Old (deprecated)

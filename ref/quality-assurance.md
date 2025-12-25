@@ -163,7 +163,7 @@ The extension uses **three-tier testing strategy** for comprehensive quality ass
 **Unit Tests** (`test/suite/unit/`):
 1. **Complete logic coverage** - All code paths tested
 2. **Full mocking** - Uses Sinon to stub all external dependencies (VS Code APIs, services)
-3. **Fast execution** - 210+ tests run in ~350ms
+3. **Fast execution** - 304 tests run in ~514ms
 4. **Deterministic** - No flaky tests due to timing or environment
 5. **Easy debugging** - Failures pinpoint exact issue
 

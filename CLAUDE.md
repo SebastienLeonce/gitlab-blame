@@ -47,7 +47,6 @@ src/
 │       └── GitLabProvider.ts        # GitLab VCS provider
 ├── services/
 │   ├── CacheService.ts              # TTL cache (implements ICacheService)
-│   ├── GitLabService.ts             # @deprecated - use GitLabProvider
 │   ├── GitService.ts                # vscode.git wrapper
 │   ├── TokenService.ts              # Multi-provider token management
 │   └── VcsProviderFactory.ts        # Provider registry and detection
@@ -210,7 +209,7 @@ See: `ref/release-process.md` §Troubleshooting
 - 📝 Documentation sync reminder (non-blocking)
 
 ### Pre-Push (~20-30s)
-- ✅ Full test suite (225 tests)
+- ✅ Full test suite (325 tests)
 - ✅ Coverage threshold (90% lines, 85% branches, 90% functions, 90% statements)
 - ✅ Production build verification
 - ✅ No focused tests (`.only()`)
@@ -508,7 +507,7 @@ Extract to a well-named method:
 - **Runtime Dependencies**: None (zero dependencies)
 - **Dev Dependencies**: TypeScript, ESLint, esbuild, Mocha, Sinon, Husky
 - **Extension API**: Uses `vscode.git` (built-in)
-- **Test Count**: 229 tests, ~500ms execution
+- **Test Count**: 325 tests (304 unit + 21 E2E), ~500ms unit test execution
 - **Coverage**: 94-95% across all metrics (enforced: 90% lines/functions/statements, 85% branches)
 - **APIs**:
   - GitLab: `GET /api/v4/projects/:id/repository/commits/:sha/merge_requests`

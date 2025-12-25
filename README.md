@@ -248,7 +248,7 @@ This shows:
   - Extension version
   - VS Code version
   - Provider (GitLab/GitHub)
-  - Error message from Output panel (`Output → Git Blame MR/PR Link`)
+  - Error message from Output panel (`Output → GitLab Blame`)
 
 ## 🤝 Contributing
 

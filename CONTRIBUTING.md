@@ -125,6 +125,7 @@ src/
 │   ├── index.ts                     # Barrel exports
 │   └── types.ts                     # Shared type definitions
 ├── providers/
+│   ├── BlameDecorationProvider.ts   # Inline decoration provider (VCS-agnostic)
 │   ├── BlameHoverProvider.ts        # Hover tooltip logic (VCS-agnostic)
 │   └── vcs/
 │       ├── GitHubProvider.ts        # GitHub VCS implementation
@@ -537,7 +538,7 @@ The project includes `.vscode/launch.json` for debugging:
 
 1. **Set breakpoints** in source files (not compiled `out/` files)
 2. **Use `logger.info()`** for debugging output (logged to Output Channel)
-3. **Check Output panel** → "Git Blame MR/PR Link" for extension logs
+3. **Check Output panel** → "GitLab Blame" for extension logs
 4. **Use Developer Tools** in Extension Development Host (`Help > Toggle Developer Tools`)
 
 ## Release Process

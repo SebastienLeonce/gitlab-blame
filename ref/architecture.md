@@ -263,7 +263,6 @@ src/
 │       └── GitLabProvider.ts        # GitLab VCS provider
 ├── services/
 │   ├── CacheService.ts              # TTL cache with auto-invalidation
-│   ├── GitLabService.ts             # @deprecated - use GitLabProvider
 │   ├── GitService.ts                # VS Code Git API wrapper
 │   ├── TokenService.ts              # Multi-provider token management
 │   └── VcsProviderFactory.ts        # Provider registry and detection
@@ -293,7 +292,7 @@ The project uses automated quality gates (git hooks, testing, coverage) to maint
 - Development workflow
 
 **Quick Summary**:
-- 316 unit tests (~700ms execution, 92%+ coverage)
+- 325 tests total: 304 unit (~514ms), 21 E2E (~29s), 93%+ coverage
 - Pre-commit: ESLint + TypeScript type check
 - Pre-push: Tests + coverage (90%/85% thresholds) + build
 - Tools: TypeScript (strict), ESLint, Mocha, Sinon, c8, Husky

@@ -111,3 +111,93 @@ isGitLabRemote('git@my-server.com:group/project.git');
 isGitLabRemote('not a url');
 // => false
 ```
+
+---
+
+## GitHub Remote Parsing
+
+### Types
+
+#### `GitHubRemoteInfo`
+
+```typescript
+interface GitHubRemoteInfo {
+  host: string;        // Full URL (e.g., "https://github.com")
+  projectPath: string; // Repository path (e.g., "owner/repo")
+}
+```
+
+### Functions
+
+#### `parseGitHubRemote(remoteUrl: string): GitHubRemoteInfo | null`
+
+Extract GitHub host and repository path from a git remote URL.
+
+**Parameters**:
+- `remoteUrl`: Git remote URL (SSH or HTTPS format)
+
+**Returns**: `GitHubRemoteInfo` or `null` if URL cannot be parsed.
+
+**Supported Formats**:
+
+| Format | Example | Result |
+|--------|---------|--------|
+| SSH | `git@github.com:owner/repo.git` | `{ host: "https://github.com", projectPath: "owner/repo" }` |
+| HTTPS | `https://github.com/owner/repo.git` | `{ host: "https://github.com", projectPath: "owner/repo" }` |
+| Enterprise | `git@github.enterprise.com:owner/repo.git` | `{ host: "https://github.enterprise.com", projectPath: "owner/repo" }` |
+
+**Examples**:
+
+```typescript
+// SSH format
+parseGitHubRemote('git@github.com:owner/repo.git');
+// => { host: 'https://github.com', projectPath: 'owner/repo' }
+
+// HTTPS format
+parseGitHubRemote('https://github.com/owner/repo.git');
+// => { host: 'https://github.com', projectPath: 'owner/repo' }
+
+// GitHub Enterprise
+parseGitHubRemote('git@github.enterprise.com:org/repo.git');
+// => { host: 'https://github.enterprise.com', projectPath: 'org/repo' }
+
+// Invalid URL
+parseGitHubRemote('not-a-url');
+// => null
+```
+
+**Implementation Notes**:
+- SSH URLs are matched with regex: `/^git@([^:]+):(.+?)(?:\.git)?$/`
+- HTTPS URLs are parsed using `URL` constructor
+- `.git` suffix is stripped from repository paths
+- Returns `null` for invalid URLs or empty paths
+
+---
+
+#### `isGitHubRemote(remoteUrl: string): boolean`
+
+Heuristic check if a URL appears to be a GitHub remote.
+
+**Parameters**:
+- `remoteUrl`: Git remote URL
+
+**Returns**: `true` if the URL looks like a GitHub remote.
+
+**Detection Logic**:
+1. If URL contains "github" (case-insensitive) in hostname → `true`
+2. Otherwise → `false`
+
+**Example**:
+
+```typescript
+isGitHubRemote('git@github.com:owner/repo.git');
+// => true
+
+isGitHubRemote('https://github.enterprise.com/org/repo.git');
+// => true (GitHub Enterprise)
+
+isGitHubRemote('git@gitlab.com:group/project.git');
+// => false
+```
+
+**Note**: This is intentionally strict. Only URLs with "github" in the hostname are considered GitHub remotes.
