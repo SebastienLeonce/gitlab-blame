@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 ### Fixed
+- **Auto-Tag Workflow** - Fixed PAT_TOKEN not triggering publish workflow
+  - Added `token: ${{ secrets.PAT_TOKEN }}` to checkout step
+  - Previously used default GITHUB_TOKEN which cannot trigger workflows
+  - Root cause: actions/checkout without token parameter defaults to GITHUB_TOKEN
 
 ### Security
 

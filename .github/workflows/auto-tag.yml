@@ -25,6 +25,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
+          token: ${{ secrets.PAT_TOKEN }}  # Use PAT to trigger workflows
           fetch-depth: 2  # Fetch current + previous commit
 
       - name: Check if version changed
