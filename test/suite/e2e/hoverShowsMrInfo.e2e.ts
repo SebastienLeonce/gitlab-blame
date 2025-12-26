@@ -57,7 +57,7 @@ suite("E2E: Hover Shows MR/PR Info", () => {
     await closeAllEditors();
   });
 
-  test.skip("Hover shows PR link for commit with associated PR", async function () {
+  test("Hover shows PR link for commit with associated PR", async function () {
     const firstCommit = FIXTURE_COMMITS[0];
     const shortSha = fixtureRepo.getShortSha(firstCommit.id);
 
