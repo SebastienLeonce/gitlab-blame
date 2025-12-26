@@ -17,6 +17,7 @@ import { GitLabProvider } from "@providers/vcs/GitLabProvider";
 import { CacheService } from "@services/CacheService";
 import { logger } from "@services/ErrorLogger";
 import { GitService } from "@services/GitService";
+import { HoverContentService } from "@services/HoverContentService";
 import { TokenService } from "@services/TokenService";
 import { VcsProviderFactory } from "@services/VcsProviderFactory";
 
@@ -97,10 +98,14 @@ export async function activate(
   state.cacheService = new CacheService();
   state.cacheService.initialize(state.gitService.getAPI());
 
+  // Create shared hover content service
+  const hoverContentService = new HoverContentService();
+
   const hoverProvider = new BlameHoverProvider(
     state.gitService,
     state.vcsProviderFactory,
     state.cacheService,
+    hoverContentService,
     handleVcsError,
   );
 
@@ -114,6 +119,7 @@ export async function activate(
     state.gitService,
     state.vcsProviderFactory,
     state.cacheService,
+    hoverContentService,
     displayMode as DisplayMode,
     handleVcsError,
   );

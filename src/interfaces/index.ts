@@ -4,3 +4,4 @@
 export * from "./types";
 export * from "./IVcsProvider";
 export * from "./ICacheService";
+export * from "./IHoverContentService";
