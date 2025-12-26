@@ -15,6 +15,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [1.5.0] - 2025-12-26
+
+### Added
+- **HoverContentService** - Extracted shared hover content formatting into dedicated service
+  - Single source of truth for MR/PR link formatting across all providers
+  - Methods: `getMrPrefix()`, `escapeMarkdown()`, `formatRelativeDate()`, `formatSimpleMrLink()`, `formatRichHoverContent()`
+  - Stateless design with pure formatting functions
+  - Comprehensive test coverage (47 new tests)
+
+### Changed
+- **BlameHoverProvider** - Now uses `HoverContentService` for content formatting
+  - Removed 4 duplicated methods (moved to service)
+- **BlameDecorationProvider** - Now uses `HoverContentService` for content formatting
+  - Removed 1 duplicated method (moved to service)
+
+### Fixed
+- **E2E Tests** - Fixed hover test reliability with workspace settings
+  - Added `.vscode/settings.json` to test fixture for consistent behavior
+
 ## [1.4.4] - 2025-12-25
 
 ### Fixed
