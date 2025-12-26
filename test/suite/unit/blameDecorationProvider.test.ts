@@ -2,9 +2,11 @@ import * as assert from "assert";
 import * as sinon from "sinon";
 import * as vscode from "vscode";
 import { BlameDecorationProvider } from "@providers/BlameDecorationProvider";
-import { GitService } from "@services/GitService";
-import { VcsProviderFactory } from "@services/VcsProviderFactory";
 import { CacheService } from "@services/CacheService";
+import { GitService } from "@services/GitService";
+import { HoverContentService } from "@services/HoverContentService";
+import { VcsProviderFactory } from "@services/VcsProviderFactory";
+import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
 import { MergeRequest } from "@types";
 
@@ -13,6 +15,7 @@ suite("BlameDecorationProvider", () => {
   let mockGitService: sinon.SinonStubbedInstance<GitService>;
   let mockVcsProviderFactory: sinon.SinonStubbedInstance<VcsProviderFactory>;
   let mockCacheService: sinon.SinonStubbedInstance<CacheService>;
+  let hoverContentService: IHoverContentService;
   let mockVcsProvider: {
     id: string;
     name: string;
@@ -54,6 +57,9 @@ suite("BlameDecorationProvider", () => {
     mockVcsProviderFactory = sinon.createStubInstance(VcsProviderFactory);
     mockCacheService = sinon.createStubInstance(CacheService);
 
+    // Use real HoverContentService (stateless, no mocking needed)
+    hoverContentService = new HoverContentService();
+
     // Create mock VCS provider
     mockVcsProvider = {
       id: "gitlab",
@@ -81,6 +87,7 @@ suite("BlameDecorationProvider", () => {
       mockGitService as unknown as GitService,
       mockVcsProviderFactory as unknown as VcsProviderFactory,
       mockCacheService as unknown as CacheService,
+      hoverContentService,
       "inline", // Default to inline mode for existing tests
       vcsErrorCallback,
     );
@@ -107,37 +114,6 @@ suite("BlameDecorationProvider", () => {
       decorationProvider.dispose();
 
       assert.ok(mockDecorationType.dispose.calledOnce);
-    });
-  });
-
-  suite("escapeMarkdown", () => {
-    // Access private method for testing
-    function escapeMarkdown(text: string): string {
-      return (
-        decorationProvider as unknown as {
-          escapeMarkdown: (s: string) => string;
-        }
-      ).escapeMarkdown(text);
-    }
-
-    test("escapes backslashes", () => {
-      assert.strictEqual(
-        escapeMarkdown("path\\to\\file"),
-        "path\\\\to\\\\file",
-      );
-    });
-
-    test("escapes markdown special characters", () => {
-      assert.strictEqual(escapeMarkdown("test*bold*"), "test\\*bold\\*");
-      assert.strictEqual(escapeMarkdown("test_italic_"), "test\\_italic\\_");
-      assert.strictEqual(escapeMarkdown("[link](url)"), "\\[link\\]\\(url\\)");
-      assert.strictEqual(escapeMarkdown("# Header"), "\\# Header");
-    });
-
-    test("escapes multiple special characters", () => {
-      const input = "Fix: *bug* in `code` [see #123]";
-      const expected = "Fix: \\*bug\\* in \\`code\\` \\[see \\#123\\]";
-      assert.strictEqual(escapeMarkdown(input), expected);
     });
   });
 
@@ -281,6 +257,7 @@ suite("BlameDecorationProvider", () => {
         mockGitService as unknown as GitService,
         mockVcsProviderFactory as unknown as VcsProviderFactory,
         mockCacheService as unknown as CacheService,
+        hoverContentService,
         "inline",
         vcsErrorCallback,
       );
@@ -313,6 +290,7 @@ suite("BlameDecorationProvider", () => {
         mockGitService as unknown as GitService,
         mockVcsProviderFactory as unknown as VcsProviderFactory,
         mockCacheService as unknown as CacheService,
+        hoverContentService,
         "hover",
         vcsErrorCallback,
       );
@@ -345,6 +323,7 @@ suite("BlameDecorationProvider", () => {
         mockGitService as unknown as GitService,
         mockVcsProviderFactory as unknown as VcsProviderFactory,
         mockCacheService as unknown as CacheService,
+        hoverContentService,
         "both",
         vcsErrorCallback,
       );

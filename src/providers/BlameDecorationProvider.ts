@@ -1,12 +1,13 @@
 import * as vscode from "vscode";
 import {
   BLAME_CONSTANTS,
-  VCS_PROVIDERS,
   DisplayMode,
   DISPLAY_MODES,
   UI_CONSTANTS,
+  VcsProviderId,
 } from "@constants";
 import { ICacheService } from "@interfaces/ICacheService";
+import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
 import { MergeRequest } from "@interfaces/types";
 import { GitService } from "@services/GitService";
@@ -29,6 +30,7 @@ export class BlameDecorationProvider {
     private gitService: GitService,
     private vcsProviderFactory: VcsProviderFactory,
     private cacheService: ICacheService,
+    private hoverContentService: IHoverContentService,
     private displayMode: DisplayMode,
     private onVcsError?: VcsErrorHandler,
   ) {
@@ -271,7 +273,8 @@ export class BlameDecorationProvider {
     provider: IVcsProvider,
   ): vscode.DecorationOptions {
     // Format MR/PR number with provider-specific prefix
-    const prefix = provider.id === VCS_PROVIDERS.GITLAB ? "!" : "#";
+    const providerId = provider.id as VcsProviderId;
+    const prefix = this.hoverContentService.getMrPrefix(providerId);
     const mrText = `${prefix}${mr.iid}`;
 
     // VS Code uses 0-based line numbers
@@ -298,19 +301,12 @@ export class BlameDecorationProvider {
       const hoverMarkdown = new vscode.MarkdownString();
       hoverMarkdown.isTrusted = true;
       hoverMarkdown.appendMarkdown(
-        `[${mrText}: ${this.escapeMarkdown(mr.title)}](${mr.webUrl})`,
+        this.hoverContentService.formatSimpleMrLink(mr, providerId),
       );
       decoration.hoverMessage = hoverMarkdown;
     }
 
     return decoration;
-  }
-
-  /**
-   * Escape special markdown characters
-   */
-  private escapeMarkdown(text: string): string {
-    return text.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&");
   }
 
   /**

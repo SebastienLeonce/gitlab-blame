@@ -1,8 +1,9 @@
 import * as vscode from "vscode";
-import { TIME_CONSTANTS, UI_CONSTANTS } from "@constants";
+import { VcsProviderId } from "@constants";
 import { ICacheService } from "@interfaces/ICacheService";
+import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
-import { MergeRequest, BlameInfo, VcsError } from "@interfaces/types";
+import { BlameInfo, MergeRequest, VcsError } from "@interfaces/types";
 import { GitService } from "@services/GitService";
 import { VcsProviderFactory } from "@services/VcsProviderFactory";
 
@@ -22,6 +23,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     private gitService: GitService,
     private vcsProviderFactory: VcsProviderFactory,
     private cacheService: ICacheService,
+    private hoverContentService: IHoverContentService,
     private onVcsError?: VcsErrorHandler,
   ) {}
 
@@ -67,27 +69,20 @@ export class BlameHoverProvider implements vscode.HoverProvider {
 
     const mrResult = await this.getMergeRequestInfo(uri, blameInfo.sha, token);
 
-    if (mrResult.mr) {
-      const mrLink = this.formatMrLink(mrResult.mr);
-      md.appendMarkdown(`**Merge Request**: ${mrLink}\n\n`);
-    } else if (mrResult.loading) {
-      md.appendMarkdown(`*Loading merge request...*\n\n`);
-    }
+    // Get provider for prefix
+    const remoteUrl = this.gitService.getRemoteUrl(uri);
+    const provider = remoteUrl
+      ? this.vcsProviderFactory.detectProvider(remoteUrl)
+      : undefined;
 
-    const shortSha = blameInfo.sha.substring(0, UI_CONSTANTS.SHORT_SHA_LENGTH);
-    const dateStr = this.formatRelativeDate(blameInfo.date);
-    md.appendMarkdown(
-      `\`${shortSha}\` by ${this.escapeMarkdown(blameInfo.author)} • ${dateStr}`,
+    const content = this.hoverContentService.formatRichHoverContent(
+      mrResult.mr,
+      blameInfo,
+      provider?.id as VcsProviderId | undefined,
+      { loading: mrResult.loading, checked: mrResult.checked },
     );
 
-    if (blameInfo.summary) {
-      md.appendMarkdown(`\n\n*${this.escapeMarkdown(blameInfo.summary)}*`);
-    }
-
-    if (!mrResult.mr && !mrResult.loading && mrResult.checked) {
-      md.appendMarkdown(`\n\n*No associated merge request*`);
-    }
-
+    md.appendMarkdown(content);
     return md;
   }
 
@@ -182,75 +177,5 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     const mr = result.data ?? null;
     this.cacheService.set(provider.id, sha, mr);
     return mr;
-  }
-
-  /**
-   * Format a date as relative time (e.g., "2 days ago")
-   */
-  private formatRelativeDate(date: Date): string {
-    const now = new Date();
-    const diffMs = now.getTime() - date.getTime();
-    const diffSec = Math.floor(diffMs / TIME_CONSTANTS.MS_PER_SECOND);
-    const diffMin = Math.floor(diffSec / TIME_CONSTANTS.SECONDS_PER_MINUTE);
-    const diffHour = Math.floor(diffMin / TIME_CONSTANTS.MINUTES_PER_HOUR);
-    const diffDay = Math.floor(diffHour / TIME_CONSTANTS.HOURS_PER_DAY);
-    const diffWeek = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_WEEK);
-    const diffMonth = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_MONTH);
-    const diffYear = Math.floor(diffDay / TIME_CONSTANTS.DAYS_PER_YEAR);
-
-    if (diffSec < TIME_CONSTANTS.SECONDS_PER_MINUTE) {
-      return "just now";
-    } else if (diffMin < TIME_CONSTANTS.MINUTES_PER_HOUR) {
-      return `${diffMin} minute${diffMin === 1 ? "" : "s"} ago`;
-    } else if (diffHour < TIME_CONSTANTS.HOURS_PER_DAY) {
-      return `${diffHour} hour${diffHour === 1 ? "" : "s"} ago`;
-    } else if (diffDay < TIME_CONSTANTS.DAYS_PER_WEEK) {
-      return `${diffDay} day${diffDay === 1 ? "" : "s"} ago`;
-    } else if (diffWeek < TIME_CONSTANTS.WEEKS_PER_MONTH) {
-      return `${diffWeek} week${diffWeek === 1 ? "" : "s"} ago`;
-    } else if (diffMonth < TIME_CONSTANTS.MONTHS_PER_YEAR) {
-      return `${diffMonth} month${diffMonth === 1 ? "" : "s"} ago`;
-    } else {
-      return `${diffYear} year${diffYear === 1 ? "" : "s"} ago`;
-    }
-  }
-
-  /**
-   * Escape special markdown characters
-   */
-  private escapeMarkdown(text: string): string {
-    return text.replace(/[\\`*_{}[\]()#+\-.!]/g, "\\$&");
-  }
-
-  /**
-   * Escape characters for Markdown link title attribute
-   */
-  private escapeMarkdownTitle(text: string): string {
-    return text.replace(/["\\]/g, "\\$&");
-  }
-
-  /**
-   * Format MR link with truncation and tooltip for long titles
-   */
-  private formatMrLink(mr: MergeRequest): string {
-    const prefix = `!${mr.iid} `;
-    const fullText = prefix + mr.title;
-
-    if (fullText.length <= UI_CONSTANTS.MAX_TITLE_LENGTH) {
-      return `[${this.escapeMarkdown(fullText)}](${mr.webUrl})`;
-    }
-
-    // Truncate title only, preserving full MR number
-    const availableForTitle =
-      UI_CONSTANTS.MAX_TITLE_LENGTH -
-      prefix.length -
-      UI_CONSTANTS.ELLIPSIS_LENGTH;
-    const truncatedTitle =
-      mr.title.substring(0, Math.max(0, availableForTitle)) + "...";
-    const truncatedText = prefix + truncatedTitle;
-
-    // Use Markdown link title syntax for full title tooltip
-    const escapedTitle = this.escapeMarkdownTitle(mr.title);
-    return `[${this.escapeMarkdown(truncatedText)}](${mr.webUrl} "${escapedTitle}")`;
   }
 }

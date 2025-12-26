@@ -409,6 +409,178 @@ Get current cache entry count (across all providers).
 
 Clean up watchers and clear cache.
 
+---
+
+## HoverContentService
+
+**Location**: `src/services/HoverContentService.ts`
+
+Stateless service for formatting hover content (MR links, blame info, relative dates). Used by both `BlameHoverProvider` and `BlameDecorationProvider` to ensure consistent hover content formatting.
+
+### Interface
+
+**Location**: `src/interfaces/IHoverContentService.ts`
+
+```typescript
+interface IHoverContentService {
+  formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string;
+  formatRichHoverContent(
+    mr: MergeRequest | null,
+    blameInfo: BlameInfo,
+    providerId: VcsProviderId | undefined,
+    options?: RichHoverContentOptions,
+  ): string;
+  escapeMarkdown(text: string): string;
+  formatRelativeDate(date: Date): string;
+  getMrPrefix(providerId: VcsProviderId): string;
+}
+
+interface RichHoverContentOptions {
+  loading?: boolean;  // Whether MR data is still loading
+  checked?: boolean;  // Whether MR lookup was completed
+}
+```
+
+### Constructor
+
+```typescript
+const hoverContentService = new HoverContentService();
+```
+
+No dependencies - this is a stateless service with pure formatting functions.
+
+### Methods
+
+#### `getMrPrefix(providerId: VcsProviderId): string`
+
+Get the MR/PR prefix for a provider.
+
+**Parameters**:
+- `providerId`: VCS provider identifier ("gitlab" or "github")
+
+**Returns**: `"!"` for GitLab, `"#"` for GitHub.
+
+**Example**:
+```typescript
+const prefix = hoverContentService.getMrPrefix("gitlab"); // "!"
+const prefix = hoverContentService.getMrPrefix("github"); // "#"
+```
+
+#### `escapeMarkdown(text: string): string`
+
+Escape special markdown characters in text to prevent rendering issues.
+
+**Parameters**:
+- `text`: Text to escape
+
+**Returns**: Escaped text safe for markdown.
+
+**Example**:
+```typescript
+hoverContentService.escapeMarkdown("Fix *bold* issue");
+// Returns: "Fix \\*bold\\* issue"
+```
+
+#### `formatRelativeDate(date: Date): string`
+
+Format a date as human-readable relative time.
+
+**Parameters**:
+- `date`: Date to format
+
+**Returns**: Relative time string (e.g., "2 days ago", "just now").
+
+**Example**:
+```typescript
+const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
+hoverContentService.formatRelativeDate(date); // "2 days ago"
+```
+
+#### `formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string`
+
+Format a simple MR/PR link for inline decoration hover.
+
+**Parameters**:
+- `mr`: Merge request data
+- `providerId`: Provider ID for prefix
+
+**Returns**: Markdown link string: `[!123: Title](url)` or `[#123: Title](url)`
+
+**Example**:
+```typescript
+const mr = { iid: 42, title: "Fix bug", webUrl: "https://gitlab.com/..." };
+hoverContentService.formatSimpleMrLink(mr, "gitlab");
+// Returns: "[!42: Fix bug](https://gitlab.com/...)"
+```
+
+#### `formatRichHoverContent(mr, blameInfo, providerId, options?): string`
+
+Format rich hover content with MR link, SHA, author, date, and commit summary.
+
+**Parameters**:
+- `mr`: Merge request data (or `null` if no MR)
+- `blameInfo`: Git blame information
+- `providerId`: Provider ID for MR link prefix (can be `undefined`)
+- `options`: Optional loading/checked state
+
+**Returns**: Multi-line markdown string.
+
+**Example**:
+```typescript
+const content = hoverContentService.formatRichHoverContent(
+  mr,
+  blameInfo,
+  "gitlab",
+  { loading: false, checked: true }
+);
+// Returns:
+// **Merge Request**: [!42 Test MR](url)
+//
+// `abc123d` by John Doe • 2 days ago
+//
+// *Fix authentication bug*
+```
+
+**Output variations**:
+- With MR: Shows MR link, commit info, and summary
+- Loading state: Shows "*Loading merge request...*" instead of MR link
+- No MR (checked): Shows "*No associated merge request*"
+
+### Usage
+
+Both providers inject `HoverContentService` via constructor:
+
+```typescript
+// In extension.ts
+const hoverContentService = new HoverContentService();
+
+const hoverProvider = new BlameHoverProvider(
+  gitService,
+  vcsProviderFactory,
+  cacheService,
+  hoverContentService,  // Shared service
+  handleVcsError,
+);
+
+const decorationProvider = new BlameDecorationProvider(
+  gitService,
+  vcsProviderFactory,
+  cacheService,
+  hoverContentService,  // Same instance
+  displayMode,
+  handleVcsError,
+);
+```
+
+### Design Notes
+
+- **Stateless**: All methods are pure functions - no internal state
+- **Returns strings**: Service returns raw markdown strings; providers create `vscode.MarkdownString` and set `isTrusted`/`supportHtml` as needed
+- **Provider-agnostic prefix**: Accepts `VcsProviderId` to determine correct prefix
+- **Single source of truth**: Both providers use same formatting logic
+
+---
+
 
 ```typescript
 // Old (deprecated)

@@ -36,6 +36,7 @@ src/
 ├── extension.ts                     # Entry point, commands, error handling
 ├── interfaces/
 │   ├── ICacheService.ts             # Cache service interface
+│   ├── IHoverContentService.ts      # Hover content service interface
 │   ├── IVcsProvider.ts              # VCS provider interface
 │   ├── index.ts                     # Barrel exports
 │   └── types.ts                     # Shared type definitions
@@ -48,6 +49,7 @@ src/
 ├── services/
 │   ├── CacheService.ts              # TTL cache (implements ICacheService)
 │   ├── GitService.ts                # vscode.git wrapper
+│   ├── HoverContentService.ts       # Shared hover content formatting
 │   ├── TokenService.ts              # Multi-provider token management
 │   └── VcsProviderFactory.ts        # Provider registry and detection
 ├── types/

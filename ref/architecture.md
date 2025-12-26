@@ -5,33 +5,39 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
 ## High-Level Design
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                         VS Code Host                                 │
-│  ┌──────────────────────────────────┐  ┌──────────────────────────┐ │
-│  │     BlameHoverProvider           │  │ BlameDecorationProvider  │ │
-│  │  (providers/BlameHoverProvider)  │  │(providers/BlameDecoration│ │
-│  │  On-demand hover tooltips        │  │  Provider.ts)            │ │
-│  │                                  │  │ Inline end-of-line       │ │
-│  │                                  │  │   annotations            │ │
-│  └──────┬───────────┬───────────┬───┘  └──┬───────────┬──────────┬┘ │
-│         │           │           │         │           │          │   │
-│  ┌──────▼─────┐ ┌───▼─────┐ ┌──▼─────────▼───┐ ┌─────▼──────────▼┐ │
-│  │ GitService │ │  Cache  │ │VcsProviderFactory│ │   TokenService │ │
-│  │(services/) │ │ Service │ │    (services/)   │ │   (services/)  │ │
-│  └──────┬─────┘ └───┬─────┘ └──┬───────────────┘ └────────────────┘ │
-│         │           │           │                                     │
-│         │           │      ┌────▼────┐  ┌────────┐                  │
-│  ┌──────▼─────┐ ┌───▼───┐  │ GitLab  │  │ GitHub │                  │
-│  │ vscode.git │ │In-Mem │  │Provider │  │Provider│                  │
-│  │ Extension  │ │ Cache │  │ (vcs/)  │  │ (vcs/) │                  │
-│  └────────────┘ └───────┘  └────┬────┘  └───┬────┘                  │
-│                                 │           │                         │
-│                           ┌─────▼────┐ ┌────▼─────┐                  │
-│                           │ GitLab   │ │ GitHub   │                  │
-│                           │   API    │ │   API    │                  │
-│                           │ (fetch)  │ │ (fetch)  │                  │
-│                           └──────────┘ └──────────┘                  │
-└─────────────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────┐
+│                            VS Code Host                                   │
+│  ┌──────────────────────────────────┐  ┌───────────────────────────────┐ │
+│  │     BlameHoverProvider           │  │   BlameDecorationProvider     │ │
+│  │  (providers/BlameHoverProvider)  │  │ (providers/BlameDecoration    │ │
+│  │  On-demand hover tooltips        │  │   Provider.ts)                │ │
+│  │                                  │  │ Inline end-of-line            │ │
+│  │                                  │  │   annotations                 │ │
+│  └──────┬───────────┬───────────┬───┴──┴──┬───────────┬────────────┬──┘ │
+│         │           │           │         │           │            │     │
+│         │           │           └────┬────┘           │            │     │
+│         │           │      ┌─────────▼─────────┐      │            │     │
+│         │           │      │HoverContentService│      │            │     │
+│         │           │      │ (Shared content   │      │            │     │
+│         │           │      │  formatting)      │      │            │     │
+│         │           │      └───────────────────┘      │            │     │
+│  ┌──────▼─────┐ ┌───▼─────┐ ┌──────────────────┐ ┌────▼───────────▼┐   │
+│  │ GitService │ │  Cache  │ │VcsProviderFactory│ │   TokenService  │   │
+│  │(services/) │ │ Service │ │    (services/)   │ │   (services/)   │   │
+│  └──────┬─────┘ └───┬─────┘ └──┬───────────────┘ └─────────────────┘   │
+│         │           │           │                                       │
+│         │           │      ┌────▼────┐  ┌────────┐                     │
+│  ┌──────▼─────┐ ┌───▼───┐  │ GitLab  │  │ GitHub │                     │
+│  │ vscode.git │ │In-Mem │  │Provider │  │Provider│                     │
+│  │ Extension  │ │ Cache │  │ (vcs/)  │  │ (vcs/) │                     │
+│  └────────────┘ └───────┘  └────┬────┘  └───┬────┘                     │
+│                                 │           │                           │
+│                           ┌─────▼────┐ ┌────▼─────┐                    │
+│                           │ GitLab   │ │ GitHub   │                    │
+│                           │   API    │ │   API    │                    │
+│                           │ (fetch)  │ │ (fetch)  │                    │
+│                           └──────────┘ └──────────┘                    │
+└──────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Component Responsibilities
@@ -75,6 +81,23 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
   - `hover` mode: Decorations include `hoverMessage` (fallback if hover provider fails)
   - `both` mode: Decorations **omit** `hoverMessage` to prevent duplication (HoverProvider handles tooltips)
 - Delegates error UI to extension via `VcsErrorHandler` callback
+
+### HoverContentService (`src/services/HoverContentService.ts`)
+
+- Stateless service for formatting hover content (MR links, blame info, relative dates)
+- Implements `IHoverContentService` interface
+- **Single source of truth** for hover content formatting across all providers
+- Used by both `BlameHoverProvider` and `BlameDecorationProvider`
+- **Methods**:
+  - `getMrPrefix(providerId)` - Returns `!` for GitLab, `#` for GitHub
+  - `escapeMarkdown(text)` - Escapes special markdown characters
+  - `formatRelativeDate(date)` - Formats dates as human-readable relative time
+  - `formatSimpleMrLink(mr, providerId)` - Simple link: `[!123: Title](url)`
+  - `formatRichHoverContent(mr, blameInfo, providerId, options)` - Full rich content with MR link, SHA, author, date, summary
+- **Design Notes**:
+  - Returns raw markdown strings (providers create `vscode.MarkdownString`)
+  - No internal state - all methods are pure functions
+  - Providers decide when/whether to show content
 
 ### GitService (`src/services/GitService.ts`)
 
@@ -252,6 +275,7 @@ src/
 ├── extension.ts                     # Entry point, command registration
 ├── interfaces/
 │   ├── ICacheService.ts             # Cache service interface
+│   ├── IHoverContentService.ts      # Hover content service interface
 │   ├── IVcsProvider.ts              # VCS provider interface
 │   ├── index.ts                     # Barrel exports
 │   └── types.ts                     # Shared type definitions
@@ -264,6 +288,7 @@ src/
 ├── services/
 │   ├── CacheService.ts              # TTL cache with auto-invalidation
 │   ├── GitService.ts                # VS Code Git API wrapper
+│   ├── HoverContentService.ts       # Shared hover content formatting
 │   ├── TokenService.ts              # Multi-provider token management
 │   └── VcsProviderFactory.ts        # Provider registry and detection
 ├── types/
