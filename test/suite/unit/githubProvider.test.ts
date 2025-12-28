@@ -722,4 +722,205 @@ suite("GitHubProvider", () => {
       assert.strictEqual(result.error?.shouldShowUI, true);
     });
   });
+
+  suite("getMergeRequestStats", () => {
+    test("returns stats on success", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({
+          number: 42,
+          title: "Test PR",
+          html_url: "https://github.com/owner/repo/pull/42",
+          state: "closed",
+          merged_at: "2025-01-15T12:00:00Z",
+          additions: 100,
+          deletions: 50,
+          changed_files: 5,
+        }),
+      });
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.deepStrictEqual(result.data, {
+        additions: 100,
+        deletions: 50,
+        changedFiles: 5,
+      });
+    });
+
+    test("handles PR with zero changes", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({
+          number: 42,
+          additions: 0,
+          deletions: 0,
+          changed_files: 0,
+        }),
+      });
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.deepStrictEqual(result.data, {
+        additions: 0,
+        deletions: 0,
+        changedFiles: 0,
+      });
+    });
+
+    test("returns error on 404 (PR not found)", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: false,
+        status: 404,
+      });
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.ok(result.error);
+    });
+
+    test("returns error on 401 (invalid token)", async () => {
+      gitHubProvider.setToken("ghp_invalid-token");
+      fetchStub.resolves({
+        ok: false,
+        status: 401,
+      });
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.error?.type, VcsErrorType.InvalidToken);
+    });
+
+    test("returns error on 429 (rate limited)", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: false,
+        status: 429,
+      });
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.error?.type, VcsErrorType.RateLimited);
+    });
+
+    test("returns error on network failure", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.rejects(new Error("Network error"));
+
+      const result = await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.error?.type, VcsErrorType.NetworkError);
+    });
+
+    test("uses custom host URL when provided", async () => {
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({
+          additions: 10,
+          deletions: 5,
+          changed_files: 2,
+        }),
+      });
+
+      await gitHubProvider.getMergeRequestStats(
+        "owner/repo",
+        42,
+        "https://github.example.com",
+      );
+
+      const calledUrl = fetchStub.firstCall.args[0] as string;
+      assert.ok(
+        calledUrl.startsWith("https://api.github.example.com"),
+        "Should use API URL derived from custom host",
+      );
+    });
+  });
+
+  suite("Stats extraction in getMergeRequestForCommit", () => {
+    test("extracts stats when returned by /commits/{sha}/pulls endpoint", async () => {
+      const prWithStats = {
+        id: 1,
+        number: 42,
+        title: "PR with stats",
+        html_url: "https://github.com/owner/repo/pull/42",
+        state: "closed",
+        merged_at: "2025-01-15T12:00:00Z",
+        additions: 100,
+        deletions: 50,
+        changed_files: 5,
+      };
+
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => [prWithStats],
+      });
+
+      const result = await gitHubProvider.getMergeRequestForCommit(
+        "owner/repo",
+        "abc123",
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.deepStrictEqual(result.data?.stats, {
+        additions: 100,
+        deletions: 50,
+        changedFiles: 5,
+      });
+    });
+
+    test("handles PR response without stats fields", async () => {
+      const prWithoutStats = {
+        id: 1,
+        number: 42,
+        title: "PR without stats",
+        html_url: "https://github.com/owner/repo/pull/42",
+        state: "closed",
+        merged_at: "2025-01-15T12:00:00Z",
+        // No additions, deletions, changed_files
+      };
+
+      gitHubProvider.setToken("ghp_test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => [prWithoutStats],
+      });
+
+      const result = await gitHubProvider.getMergeRequestForCommit(
+        "owner/repo",
+        "abc123",
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.strictEqual(result.data?.stats, undefined);
+    });
+  });
 });

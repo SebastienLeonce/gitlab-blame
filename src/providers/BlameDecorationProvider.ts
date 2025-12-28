@@ -301,6 +301,7 @@ export class BlameDecorationProvider {
         const hoverMarkdown = new vscode.MarkdownString();
         hoverMarkdown.isTrusted = true;
         hoverMarkdown.supportHtml = true;
+        hoverMarkdown.supportThemeIcons = true;
         hoverMarkdown.appendMarkdown(content);
         decoration.hoverMessage = hoverMarkdown;
       }

@@ -9,6 +9,9 @@ export interface MockPR {
   html_url: string;
   state: string;
   merged_at: string | null;
+  additions?: number;
+  deletions?: number;
+  changed_files?: number;
 }
 
 /**
@@ -94,6 +97,19 @@ export class GitHubApiMock {
       .get(`/repos/${owner}/${repo}/pulls/${prNumber}`)
       .matchHeader("Authorization", /^(token|Bearer) /)
       .reply(200, pr);
+    return this;
+  }
+
+  /**
+   * Mock the /pulls/{number} endpoint without header requirements (for stats fetch)
+   */
+  mockPullRequestNoHeaders(
+    owner: string,
+    repo: string,
+    prNumber: number,
+    pr: MockPR,
+  ): this {
+    this.scope.get(`/repos/${owner}/${repo}/pulls/${prNumber}`).reply(200, pr);
     return this;
   }
 
@@ -227,6 +243,28 @@ export function createMockPR(
     html_url: `https://github.com/test-owner/test-repo/pull/${number}`,
     state: "closed",
     merged_at: "2024-01-15T12:00:00Z",
+    ...options,
+  };
+}
+
+/**
+ * Create a mock PR response with stats
+ */
+export function createMockPRWithStats(
+  number: number,
+  title: string,
+  stats: { additions: number; deletions: number; changedFiles: number },
+  options: Partial<MockPR> = {},
+): MockPR {
+  return {
+    number,
+    title,
+    html_url: `https://github.com/test-owner/test-repo/pull/${number}`,
+    state: "closed",
+    merged_at: "2024-01-15T12:00:00Z",
+    additions: stats.additions,
+    deletions: stats.deletions,
+    changed_files: stats.changedFiles,
     ...options,
   };
 }

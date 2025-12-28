@@ -1,6 +1,21 @@
 import * as vscode from "vscode";
 
 /**
+ * MR/PR change statistics (provider-agnostic)
+ * GitHub provides granular data; GitLab provides only changes_count
+ */
+export interface MergeRequestStats {
+  /** Number of lines added (GitHub only) */
+  additions?: number;
+  /** Number of lines deleted (GitHub only) */
+  deletions?: number;
+  /** Number of files changed (GitHub only) */
+  changedFiles?: number;
+  /** Total changes count (GitLab: "42" or "1000+") */
+  changesCount?: string;
+}
+
+/**
  * Merge/Pull Request information (provider-agnostic)
  */
 export interface MergeRequest {
@@ -9,6 +24,8 @@ export interface MergeRequest {
   webUrl: string;
   mergedAt: string | null;
   state: string;
+  /** Change statistics (populated via lazy loading) */
+  stats?: MergeRequestStats;
 }
 
 /**
@@ -33,6 +50,8 @@ export interface GitLabMR {
   web_url: string;
   state: string;
   merged_at: string | null;
+  /** Changes count (only from single MR endpoint, can be "1000+") */
+  changes_count?: string;
   author?: {
     name: string;
     username: string;
@@ -49,6 +68,12 @@ export interface GitHubPR {
   html_url: string;
   state: string;
   merged_at: string | null;
+  /** Lines added (from single PR endpoint) */
+  additions?: number;
+  /** Lines deleted (from single PR endpoint) */
+  deletions?: number;
+  /** Files changed (from single PR endpoint) */
+  changed_files?: number;
   user?: {
     login: string;
   };

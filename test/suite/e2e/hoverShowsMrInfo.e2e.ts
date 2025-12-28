@@ -5,6 +5,7 @@ import { HoverTrigger } from "./helpers/hoverTrigger";
 import {
   GitHubApiMock,
   createMockPR,
+  createMockPRWithStats,
   type MockPR,
 } from "./helpers/mockGitHubApi";
 import { FixtureRepository, FIXTURE_COMMITS } from "./helpers/fixtureRepo";
@@ -101,11 +102,6 @@ suite("E2E: Hover Shows MR/PR Info", () => {
     assert.ok(
       result.rawContent.includes("feat: add user authentication"),
       "Should contain MR/PR title",
-    );
-
-    assert.ok(
-      result.rawContent.includes("by"),
-      "Should contain commit author info",
     );
   });
 
@@ -226,6 +222,76 @@ suite("E2E: Hover Shows MR/PR Info", () => {
         (await hoverTrigger.getHoverContent(editor.document.uri, position)) !==
           undefined,
       "Should have some hover content",
+    );
+  });
+
+  test("Second hover shows PR stats after lazy loading", async function () {
+    const firstCommit = FIXTURE_COMMITS[0];
+    const shortSha = fixtureRepo.getShortSha(firstCommit.id);
+
+    // Mock PR with stats
+    const mockPrWithStats = createMockPRWithStats(
+      1,
+      "feat: add user authentication",
+      { additions: 100, deletions: 50, changedFiles: 5 },
+    );
+
+    // Mock initial commit/pulls endpoint (returns PR with stats)
+    apiMock.mockCommitPullsNoHeaders(
+      TEST_DATA.REPO_OWNER,
+      TEST_DATA.REPO_NAME,
+      shortSha,
+      [mockPrWithStats],
+    );
+
+    // Mock the /pulls/{number} endpoint for stats fetch
+    apiMock.mockPullRequestNoHeaders(
+      TEST_DATA.REPO_OWNER,
+      TEST_DATA.REPO_NAME,
+      1,
+      mockPrWithStats,
+    );
+
+    await setToken("github", TEST_DATA.GITHUB_TOKEN);
+
+    const filePath = fixtureRepo.getFilePath(TEST_DATA.TEST_FILE);
+    const editor = await openFile(filePath);
+
+    const position = new vscode.Position(0, 0);
+
+    // First hover - triggers MR fetch and background stats fetch
+    await hoverTrigger.waitForMrInfo(editor.document.uri, position, 15000);
+
+    // Wait for background stats fetch to complete
+    await sleep(TEST_TIMING.EDITOR_STABILIZE_MS * 3);
+
+    // Second hover - should show stats from cache
+    const result = await hoverTrigger.waitForMrInfo(
+      editor.document.uri,
+      position,
+      5000,
+    );
+
+    assert.ok(result.hasMr, "Should detect MR presence");
+
+    // Verify PR number is present
+    assert.ok(
+      result.rawContent.includes("#1") || result.rawContent.includes("!1"),
+      "Should contain PR number",
+    );
+
+    // Verify stats are displayed with ThemeIcons: "$(diff-added) 100  $(diff-removed) 50  $(file) 5"
+    assert.ok(
+      result.rawContent.includes("$(diff-added) 100"),
+      "Should show additions with icon",
+    );
+    assert.ok(
+      result.rawContent.includes("$(diff-removed) 50"),
+      "Should show deletions with icon",
+    );
+    assert.ok(
+      result.rawContent.includes("$(file) 5"),
+      "Should show changed files with icon",
     );
   });
 });

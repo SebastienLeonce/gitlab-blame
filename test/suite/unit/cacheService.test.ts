@@ -258,4 +258,89 @@ suite("CacheService", () => {
       assert.strictEqual(cacheService.has("github", "abc123"), false);
     });
   });
+
+  suite("updateStats", () => {
+    test("updates existing cache entry with stats", () => {
+      cacheService.set("gitlab", "abc123", sampleMR);
+      const stats = { changesCount: "42" };
+
+      const result = cacheService.updateStats("gitlab", "abc123", stats);
+
+      assert.strictEqual(result, true);
+      const cached = cacheService.get("gitlab", "abc123");
+      assert.deepStrictEqual(cached?.stats, stats);
+    });
+
+    test("returns false if entry not in cache", () => {
+      const stats = { changesCount: "42" };
+
+      const result = cacheService.updateStats("gitlab", "notcached", stats);
+
+      assert.strictEqual(result, false);
+    });
+
+    test("returns false if entry expired", () => {
+      cacheService.set("gitlab", "abc123", sampleMR);
+      const stats = { changesCount: "42" };
+
+      // Advance past TTL
+      clock.tick(2 * 60 * 60 * 1000);
+
+      const result = cacheService.updateStats("gitlab", "abc123", stats);
+
+      assert.strictEqual(result, false);
+    });
+
+    test("returns false if cached MR is null", () => {
+      cacheService.set("gitlab", "abc123", null);
+      const stats = { changesCount: "42" };
+
+      const result = cacheService.updateStats("gitlab", "abc123", stats);
+
+      assert.strictEqual(result, false);
+    });
+
+    test("preserves original TTL when updating stats", () => {
+      cacheService.set("gitlab", "abc123", sampleMR);
+
+      // Advance 30 minutes
+      clock.tick(30 * 60 * 1000);
+
+      // Update stats
+      const stats = { changesCount: "42" };
+      cacheService.updateStats("gitlab", "abc123", stats);
+
+      // Advance another 40 minutes (total 70 minutes, past 1 hour TTL)
+      clock.tick(40 * 60 * 1000);
+
+      // Entry should be expired based on original set time
+      const result = cacheService.get("gitlab", "abc123");
+      assert.strictEqual(result, undefined);
+    });
+
+    test("updates stats for correct provider only", () => {
+      const githubPR = {
+        iid: 456,
+        title: "GitHub PR",
+        webUrl: "https://github.com/owner/repo/pull/456",
+        mergedAt: "2025-01-02T00:00:00Z",
+        state: "merged",
+      };
+
+      cacheService.set("gitlab", "abc123", sampleMR);
+      cacheService.set("github", "abc123", githubPR);
+
+      const gitlabStats = { changesCount: "42" };
+      const githubStats = { additions: 100, deletions: 50, changedFiles: 5 };
+
+      cacheService.updateStats("gitlab", "abc123", gitlabStats);
+      cacheService.updateStats("github", "abc123", githubStats);
+
+      const cachedGitlab = cacheService.get("gitlab", "abc123");
+      const cachedGithub = cacheService.get("github", "abc123");
+
+      assert.deepStrictEqual(cachedGitlab?.stats, gitlabStats);
+      assert.deepStrictEqual(cachedGithub?.stats, githubStats);
+    });
+  });
 });

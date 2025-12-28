@@ -397,6 +397,34 @@ Check if SHA is cached and not expired for a specific provider.
 - `providerId`: VCS provider identifier
 - `sha`: Commit SHA
 
+#### `updateStats(providerId: string, sha: string, stats: MergeRequestStats): boolean`
+
+Update an existing cached MR with stats data. Used for lazy-loading stats after initial MR fetch.
+
+**Parameters**:
+- `providerId`: VCS provider identifier (e.g., "gitlab", "github")
+- `sha`: Commit SHA
+- `stats`: Stats data to add to the cached MR
+
+**Returns**:
+- `true`: Cache was updated successfully
+- `false`: Entry not found, expired, or cached value is `null`
+
+**Example**:
+```typescript
+// After fetching stats in background
+const updated = cacheService.updateStats("github", "abc123", {
+  additions: 100,
+  deletions: 50,
+  changedFiles: 5,
+});
+```
+
+**Notes**:
+- Preserves original TTL (doesn't extend expiration)
+- Returns `false` if MR is cached as `null` (no MR exists)
+- Used by `BlameHoverProvider.triggerStatsFetch()` for lazy loading
+
 #### `clear(): void`
 
 Clear all cached entries (for all providers).
@@ -433,7 +461,8 @@ interface IHoverContentService {
 }
 
 interface RichHoverContentOptions {
-  loading?: boolean;  // Whether MR data is still loading
+  loading?: boolean;       // Whether MR data is still loading
+  statsLoading?: boolean;  // Whether stats are being fetched in background
 }
 ```
 
@@ -500,6 +529,9 @@ const content = hoverContentService.formatRichHoverContent(
 
 **Output variations**:
 - With MR: Shows `**Merge Request**: [!42 Title](url)`
+- With MR + stats (GitHub): Shows MR link + `\n\n$(diff-added) 100  $(diff-removed) 50  $(file) 5`
+- With MR + stats (GitLab): Shows MR link + `\n\n$(diff) 42 changes`
+- With MR + statsLoading: Shows MR link + `\n\n*Loading stats...*`
 - Loading state: Shows `*Loading merge request...*`
 - No MR: Returns empty string (caller should suppress hover)
 
@@ -566,13 +598,33 @@ enum VcsErrorType {
 
 ```typescript
 interface MergeRequest {
-  iid: number;           // MR number within project
-  title: string;         // MR title
-  webUrl: string;        // Full URL to MR page
-  mergedAt: string | null; // ISO timestamp or null
-  state: string;         // "merged", "opened", "closed"
+  iid: number;                    // MR number within project
+  title: string;                  // MR title
+  webUrl: string;                 // Full URL to MR page
+  mergedAt: string | null;        // ISO timestamp or null
+  state: string;                  // "merged", "opened", "closed"
+  stats?: MergeRequestStats;      // Optional stats (lazy-loaded)
 }
 ```
+
+### MergeRequestStats
+
+```typescript
+interface MergeRequestStats {
+  additions?: number;      // Lines added (GitHub only)
+  deletions?: number;      // Lines deleted (GitHub only)
+  changedFiles?: number;   // Files changed (GitHub only)
+  changesCount?: string;   // Total changes as string (GitLab only, can be "1000+")
+}
+```
+
+**Provider differences**:
+- **GitHub**: Returns granular stats (`additions`, `deletions`, `changed_files`) from `/pulls/{number}` endpoint
+- **GitLab**: Returns only `changes_count` (string) from `/merge_requests/{iid}` endpoint
+
+**Display format** (with ThemeIcons):
+- GitHub: `$(diff-added) 100  $(diff-removed) 50  $(file) 5`
+- GitLab: `$(diff) 42 changes` or `$(diff) 1000+ changes`
 
 ### BlameInfo
 
@@ -630,6 +682,7 @@ interface GitLabMR {
   web_url: string;
   state: string;
   merged_at: string | null;
+  changes_count?: string;  // Stats field (can be "1000+")
   author?: {
     name: string;
     username: string;
@@ -649,10 +702,13 @@ interface GitHubPR {
   html_url: string;
   state: string;
   merged_at: string | null;
+  additions?: number;      // Stats fields
+  deletions?: number;
+  changed_files?: number;
   user?: {
     login: string;
   };
 }
 ```
 
-**Note**: Both `GitLabMR` and `GitHubPR` are mapped to the common `MergeRequest` type for internal use.
+**Note**: Both `GitLabMR` and `GitHubPR` are mapped to the common `MergeRequest` type for internal use. Stats fields are extracted and stored in `MergeRequestStats` when available.

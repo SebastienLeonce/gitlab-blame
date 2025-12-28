@@ -7,6 +7,8 @@ import { MergeRequest } from "./types";
 export interface RichHoverContentOptions {
   /** Whether MR data is still loading */
   loading?: boolean;
+  /** Whether MR stats are still loading (show loading indicator for stats only) */
+  statsLoading?: boolean;
 }
 
 /**

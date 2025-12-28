@@ -27,6 +27,7 @@ Instantly see which Merge Request or Pull Request introduced any line of code - 
 ## ✨ Features
 
 - 🔗 **Direct MR/PR Links** - Click to open in browser from blame hover or inline annotations
+- 📊 **Change Statistics** - See additions, deletions, and file counts in hover (lazy-loaded for performance)
 - 📍 **Inline Annotations** - Show MR/PR links at end-of-line - configurable display modes
 - 🌍 **Multi-Provider** - Works with **GitLab** and **GitHub** (including self-hosted/Enterprise)
 - 🚀 **Smart Caching** - TTL-based caching with auto-invalidation on git operations

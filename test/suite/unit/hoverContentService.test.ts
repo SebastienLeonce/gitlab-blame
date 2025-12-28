@@ -238,5 +238,106 @@ suite("HoverContentService", () => {
       );
       assert.strictEqual(result, "");
     });
+
+    test("includes GitHub stats line when MR has additions/deletions", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { additions: 100, deletions: 50, changedFiles: 5 },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITHUB,
+      );
+      assert.ok(
+        result.includes("$(diff-added) 100  $(diff-removed) 50  $(file) 5"),
+      );
+    });
+
+    test("includes GitLab stats line when MR has changesCount", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { changesCount: "42" },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITLAB,
+      );
+      assert.ok(result.includes("$(diff) 42 changes"));
+    });
+
+    test("handles GitLab 1000+ edge case", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { changesCount: "1000+" },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITLAB,
+      );
+      assert.ok(result.includes("$(diff) 1000+ changes"));
+    });
+
+    test("handles singular file count", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { additions: 10, deletions: 5, changedFiles: 1 },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITHUB,
+      );
+      assert.ok(
+        result.includes("$(diff-added) 10  $(diff-removed) 5  $(file) 1"),
+      );
+    });
+
+    test("handles singular change count", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { changesCount: "1" },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITLAB,
+      );
+      assert.ok(result.includes("$(diff) 1 change"));
+      assert.ok(!result.includes("changes"));
+    });
+
+    test("shows statsLoading message when statsLoading is true", () => {
+      const result = hoverContentService.formatRichHoverContent(
+        sampleMR,
+        VCS_PROVIDERS.GITLAB,
+        { statsLoading: true },
+      );
+      assert.ok(result.includes("*Loading stats...*"));
+    });
+
+    test("shows stats instead of loading when both stats and statsLoading present", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { changesCount: "42" },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITLAB,
+        { statsLoading: true },
+      );
+      assert.ok(result.includes("$(diff) 42 changes"));
+      assert.ok(!result.includes("*Loading stats...*"));
+    });
+
+    test("GitHub stats without changedFiles omits file count", () => {
+      const mrWithStats: MergeRequest = {
+        ...sampleMR,
+        stats: { additions: 100, deletions: 50 },
+      };
+      const result = hoverContentService.formatRichHoverContent(
+        mrWithStats,
+        VCS_PROVIDERS.GITHUB,
+      );
+      assert.ok(result.includes("$(diff-added) 100  $(diff-removed) 50"));
+      assert.ok(!result.includes("$(file)"));
+    });
   });
 });

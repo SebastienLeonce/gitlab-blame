@@ -28,6 +28,14 @@ suite("VcsProviderFactory", () => {
           shouldShowUI: false,
         },
       }),
+      getMergeRequestStats: async (): Promise<VcsResult<any>> => ({
+        success: false,
+        error: {
+          type: VcsErrorType.NetworkError,
+          message: "Not implemented",
+          shouldShowUI: false,
+        },
+      }),
       resetErrorState: () => {},
     };
   });

@@ -2,6 +2,7 @@ import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "@constants";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
 import {
   MergeRequest,
+  MergeRequestStats,
   VcsResult,
   RemoteInfo,
   VcsErrorType,
@@ -117,6 +118,61 @@ export class GitLabProvider implements IVcsProvider {
     }
   }
 
+  async getMergeRequestStats(
+    projectPath: string,
+    mrIid: number,
+    hostUrl?: string,
+  ): Promise<VcsResult<MergeRequestStats | null>> {
+    if (!this.token) {
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.NoToken,
+          message: "No Personal Access Token configured",
+          shouldShowUI: false,
+        },
+      };
+    }
+
+    const host = hostUrl ?? this.hostUrl;
+    const encodedPath = encodeURIComponent(projectPath);
+    const url = `${host}/api/v4/projects/${encodedPath}/merge_requests/${mrIid}`;
+
+    try {
+      const response = await fetch(url, {
+        headers: {
+          "PRIVATE-TOKEN": this.token,
+          Accept: "application/json",
+        },
+      });
+
+      if (!response.ok) {
+        return this.handleStatsApiError(response.status);
+      }
+
+      const mr: GitLabMR = (await response.json()) as GitLabMR;
+      // GitLab may not include changes_count for very old MRs or certain configurations
+      if (mr.changes_count === undefined) {
+        return { success: true, data: null };
+      }
+
+      return {
+        success: true,
+        data: { changesCount: mr.changes_count },
+      };
+    } catch (error) {
+      logger.error("GitLab", "Stats API request failed", error);
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.NetworkError,
+          message: error instanceof Error ? error.message : "Network error",
+          shouldShowUI: false,
+        },
+      };
+    }
+  }
+
   resetErrorState(): void {
     this.hasShownTokenError = false;
   }
@@ -184,6 +240,60 @@ export class GitLabProvider implements IVcsProvider {
           error: {
             type: VcsErrorType.NotFound,
             message: "Project or commit not found",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      case HTTP_STATUS.TOO_MANY_REQUESTS:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.RateLimited,
+            message: "API rate limited",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      default:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.Unknown,
+            message: `API error ${statusCode}`,
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+    }
+  }
+
+  /**
+   * Handle stats API error responses (no UI, stats are optional)
+   */
+  private handleStatsApiError(
+    statusCode: number,
+  ): VcsResult<MergeRequestStats | null> {
+    switch (statusCode) {
+      case HTTP_STATUS.UNAUTHORIZED:
+      case HTTP_STATUS.FORBIDDEN:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.InvalidToken,
+            message: "Invalid or expired token",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      case HTTP_STATUS.NOT_FOUND:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.NotFound,
+            message: "Merge request not found",
             statusCode,
             shouldShowUI: false,
           },

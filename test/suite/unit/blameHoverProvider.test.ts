@@ -10,6 +10,7 @@ import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
 import {
   MergeRequest,
+  MergeRequestStats,
   RemoteInfo,
   VcsError,
   VcsErrorType,
@@ -32,6 +33,7 @@ suite("BlameHoverProvider", () => {
     parseRemoteUrl: sinon.SinonStub;
     isProviderUrl: sinon.SinonStub;
     getMergeRequestForCommit: sinon.SinonStub;
+    getMergeRequestStats: sinon.SinonStub;
     resetErrorState: sinon.SinonStub;
   };
   let vcsErrorCallback: sinon.SinonSpy;
@@ -64,6 +66,9 @@ suite("BlameHoverProvider", () => {
       parseRemoteUrl: sinon.stub(),
       isProviderUrl: sinon.stub().returns(true),
       getMergeRequestForCommit: sinon.stub(),
+      getMergeRequestStats: sinon
+        .stub()
+        .resolves({ success: true, data: null }),
       resetErrorState: sinon.stub(),
     };
 
@@ -102,6 +107,7 @@ suite("BlameHoverProvider", () => {
       mr: MergeRequest | null;
       loading: boolean;
       checked: boolean;
+      statsLoading: boolean;
     }>;
 
     // Access private method for testing
@@ -113,6 +119,7 @@ suite("BlameHoverProvider", () => {
       mr: MergeRequest | null;
       loading: boolean;
       checked: boolean;
+      statsLoading: boolean;
     }> {
       return (
         blameHoverProvider as unknown as {
@@ -138,6 +145,7 @@ suite("BlameHoverProvider", () => {
       webUrl: "https://gitlab.com/group/project/-/merge_requests/42",
       mergedAt: "2025-01-15T12:00:00Z",
       state: "merged",
+      stats: { changesCount: "42" },
     };
     const sampleRemoteInfo: RemoteInfo = {
       projectPath: "group/project",
@@ -166,6 +174,7 @@ suite("BlameHoverProvider", () => {
         mr: sampleMR,
         loading: false,
         checked: true,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockCacheService.get.calledOnceWith("gitlab", testSha),
@@ -190,6 +199,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: true,
+        statsLoading: false,
       });
     });
 
@@ -209,6 +219,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: true,
         checked: false,
+        statsLoading: false,
       });
 
       // Cleanup
@@ -226,6 +237,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: false,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockGitService.getRemoteUrl.calledOnceWith(testUri),
@@ -245,6 +257,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: false,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockVcsProviderFactory.detectProvider.calledOnceWith(
@@ -266,6 +279,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: false,
+        statsLoading: false,
       });
       assert.strictEqual(mockVcsProvider.hasToken.calledOnce, true);
     });
@@ -283,6 +297,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: false,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockVcsProvider.parseRemoteUrl.calledOnceWith(
@@ -310,6 +325,7 @@ suite("BlameHoverProvider", () => {
         mr: sampleMR,
         loading: false,
         checked: true,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockVcsProvider.getMergeRequestForCommit.calledOnceWith(
@@ -359,6 +375,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: true,
+        statsLoading: false,
       });
       assert.strictEqual(
         mockCacheService.set.calledOnceWith("gitlab", testSha, null),
@@ -456,6 +473,7 @@ suite("BlameHoverProvider", () => {
         mr: null,
         loading: false,
         checked: false,
+        statsLoading: false,
       });
     });
 
@@ -528,6 +546,7 @@ suite("BlameHoverProvider", () => {
       webUrl: "https://gitlab.com/group/project/-/merge_requests/42",
       mergedAt: "2025-01-15T12:00:00Z",
       state: "merged",
+      stats: { changesCount: "42" },
     };
 
     function createMockCancellationToken(
@@ -708,6 +727,221 @@ suite("BlameHoverProvider", () => {
       // Error callback should have been invoked
       assert.strictEqual(vcsErrorCallback.calledOnce, true);
       assert.deepStrictEqual(vcsErrorCallback.firstCall.args[0], vcsError);
+    });
+  });
+
+  suite("triggerStatsFetch", () => {
+    // Access private method
+    function triggerStatsFetch(
+      provider: IVcsProvider,
+      remoteInfo: RemoteInfo,
+      mr: MergeRequest,
+      sha: string,
+    ): void {
+      return (
+        blameHoverProvider as unknown as {
+          triggerStatsFetch: (
+            provider: IVcsProvider,
+            remoteInfo: RemoteInfo,
+            mr: MergeRequest,
+            sha: string,
+          ) => void;
+        }
+      ).triggerStatsFetch(provider, remoteInfo, mr, sha);
+    }
+
+    // Access private state
+    function getPendingStatsRequests(): Set<string> {
+      return (
+        blameHoverProvider as unknown as {
+          pendingStatsRequests: Set<string>;
+        }
+      ).pendingStatsRequests;
+    }
+
+    const testSha = "abc123def456";
+    const sampleMR: MergeRequest = {
+      iid: 42,
+      title: "Test MR",
+      webUrl: "https://gitlab.com/group/project/-/merge_requests/42",
+      mergedAt: "2025-01-15T12:00:00Z",
+      state: "merged",
+    };
+    const sampleRemoteInfo: RemoteInfo = {
+      projectPath: "group/project",
+      host: "https://gitlab.com",
+      provider: "gitlab",
+    };
+    const sampleStats: MergeRequestStats = {
+      changesCount: "42",
+    };
+
+    test("deduplicates concurrent requests for same SHA", async () => {
+      mockVcsProvider.getMergeRequestStats.resolves({
+        success: true,
+        data: sampleStats,
+      });
+
+      // Call twice with same SHA
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should only be called once
+      assert.strictEqual(mockVcsProvider.getMergeRequestStats.callCount, 1);
+    });
+
+    test("cleans up pendingStatsRequests after successful fetch", async () => {
+      mockVcsProvider.getMergeRequestStats.resolves({
+        success: true,
+        data: sampleStats,
+      });
+
+      const pendingStats = getPendingStatsRequests();
+      assert.strictEqual(pendingStats.size, 0);
+
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should be cleaned up
+      assert.strictEqual(pendingStats.size, 0);
+    });
+
+    test("cleans up pendingStatsRequests after failed fetch", async () => {
+      mockVcsProvider.getMergeRequestStats.rejects(new Error("Network error"));
+
+      const pendingStats = getPendingStatsRequests();
+      assert.strictEqual(pendingStats.size, 0);
+
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      // Should be cleaned up even after error
+      assert.strictEqual(pendingStats.size, 0);
+    });
+
+    test("updates cache on successful stats fetch", async () => {
+      mockVcsProvider.getMergeRequestStats.resolves({
+        success: true,
+        data: sampleStats,
+      });
+
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      assert.strictEqual(mockCacheService.updateStats.calledOnce, true);
+      assert.deepStrictEqual(mockCacheService.updateStats.firstCall.args, [
+        "gitlab",
+        testSha,
+        sampleStats,
+      ]);
+    });
+
+    test("does not update cache when stats fetch returns null", async () => {
+      mockVcsProvider.getMergeRequestStats.resolves({
+        success: true,
+        data: null,
+      });
+
+      triggerStatsFetch(
+        mockVcsProvider as unknown as IVcsProvider,
+        sampleRemoteInfo,
+        sampleMR,
+        testSha,
+      );
+
+      // Wait for async operations
+      await new Promise((resolve) => setTimeout(resolve, 0));
+
+      assert.strictEqual(mockCacheService.updateStats.called, false);
+    });
+
+    test("does not throw on stats fetch error", async () => {
+      mockVcsProvider.getMergeRequestStats.rejects(new Error("Network error"));
+
+      // Should not throw
+      assert.doesNotThrow(() => {
+        triggerStatsFetch(
+          mockVcsProvider as unknown as IVcsProvider,
+          sampleRemoteInfo,
+          sampleMR,
+          testSha,
+        );
+      });
+
+      // Wait for async operations to complete
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    });
+  });
+
+  suite("dispose", () => {
+    // Access private state
+    function getPendingRequests(): Map<string, Promise<MergeRequest | null>> {
+      return (
+        blameHoverProvider as unknown as {
+          pendingRequests: Map<string, Promise<MergeRequest | null>>;
+        }
+      ).pendingRequests;
+    }
+
+    function getPendingStatsRequests(): Set<string> {
+      return (
+        blameHoverProvider as unknown as {
+          pendingStatsRequests: Set<string>;
+        }
+      ).pendingStatsRequests;
+    }
+
+    test("clears pendingRequests and pendingStatsRequests", () => {
+      const pendingRequests = getPendingRequests();
+      const pendingStatsRequests = getPendingStatsRequests();
+
+      // Add entries to both collections
+      pendingRequests.set("gitlab:abc123", Promise.resolve(null));
+      pendingStatsRequests.add("gitlab:stats:abc123");
+
+      assert.strictEqual(pendingRequests.size, 1);
+      assert.strictEqual(pendingStatsRequests.size, 1);
+
+      // Dispose
+      blameHoverProvider.dispose();
+
+      // Verify both are cleared
+      assert.strictEqual(pendingRequests.size, 0);
+      assert.strictEqual(pendingStatsRequests.size, 0);
     });
   });
 });

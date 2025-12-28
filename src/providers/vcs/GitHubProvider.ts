@@ -2,6 +2,7 @@ import { VCS_PROVIDERS, DEFAULTS, HTTP_STATUS } from "@constants";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
 import {
   MergeRequest,
+  MergeRequestStats,
   VcsResult,
   RemoteInfo,
   VcsErrorType,
@@ -154,6 +155,55 @@ export class GitHubProvider implements IVcsProvider {
     this.hasShownTokenError = false;
   }
 
+  async getMergeRequestStats(
+    projectPath: string,
+    prNumber: number,
+    hostUrl?: string,
+  ): Promise<VcsResult<MergeRequestStats | null>> {
+    if (!this.token) {
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.NoToken,
+          message: "No Personal Access Token configured",
+          shouldShowUI: false,
+        },
+      };
+    }
+
+    const gitHost = hostUrl ?? this.hostUrl;
+    const apiHost = this.convertToApiUrl(gitHost);
+
+    try {
+      const url = `${apiHost}/repos/${projectPath}/pulls/${prNumber}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `token ${this.token}`,
+          Accept: "application/vnd.github+json",
+        },
+      });
+
+      if (!response.ok) {
+        return this.handleStatsApiError(response.status);
+      }
+
+      const pr: GitHubPR = (await response.json()) as GitHubPR;
+      const stats = this.extractStats(pr);
+
+      return { success: true, data: stats ?? null };
+    } catch (error) {
+      logger.error("GitHub", "Stats API request failed", error);
+      return {
+        success: false,
+        error: {
+          type: VcsErrorType.NetworkError,
+          message: error instanceof Error ? error.message : "Network error",
+          shouldShowUI: false,
+        },
+      };
+    }
+  }
+
   /**
    * Select the appropriate PR from a list
    * Strategy: First merged PR by merged_at date
@@ -179,15 +229,37 @@ export class GitHubProvider implements IVcsProvider {
 
   /**
    * Map GitHub API response to internal MergeRequest type
+   * Includes stats if available (from single PR endpoint)
    */
   private mapToPullRequest(pr: GitHubPR): MergeRequest {
-    return {
+    const result: MergeRequest = {
       iid: pr.number,
       title: pr.title,
       webUrl: pr.html_url,
       mergedAt: pr.merged_at,
       state: pr.state,
     };
+
+    const stats = this.extractStats(pr);
+    if (stats) {
+      result.stats = stats;
+    }
+
+    return result;
+  }
+
+  /**
+   * Extract stats from GitHub PR response if available
+   */
+  private extractStats(pr: GitHubPR): MergeRequestStats | undefined {
+    if (pr.additions !== undefined && pr.deletions !== undefined) {
+      return {
+        additions: pr.additions,
+        deletions: pr.deletions,
+        changedFiles: pr.changed_files,
+      };
+    }
+    return undefined;
   }
 
   /**
@@ -217,6 +289,60 @@ export class GitHubProvider implements IVcsProvider {
           error: {
             type: VcsErrorType.NotFound,
             message: "Repository or commit not found",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      case HTTP_STATUS.TOO_MANY_REQUESTS:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.RateLimited,
+            message: "API rate limited",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      default:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.Unknown,
+            message: `API error ${statusCode}`,
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+    }
+  }
+
+  /**
+   * Handle stats API error responses (no UI, stats are optional)
+   */
+  private handleStatsApiError(
+    statusCode: number,
+  ): VcsResult<MergeRequestStats | null> {
+    switch (statusCode) {
+      case HTTP_STATUS.UNAUTHORIZED:
+      case HTTP_STATUS.FORBIDDEN:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.InvalidToken,
+            message: "Invalid or expired token",
+            statusCode,
+            shouldShowUI: false,
+          },
+        };
+
+      case HTTP_STATUS.NOT_FOUND:
+        return {
+          success: false,
+          error: {
+            type: VcsErrorType.NotFound,
+            message: "Pull request not found",
             statusCode,
             shouldShowUI: false,
           },

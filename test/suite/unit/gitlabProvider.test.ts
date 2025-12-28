@@ -560,4 +560,128 @@ suite("GitLabProvider", () => {
       );
     });
   });
+
+  suite("getMergeRequestStats", () => {
+    test("returns stats on success", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({
+          iid: 42,
+          title: "Test MR",
+          web_url: "https://gitlab.com/group/project/-/merge_requests/42",
+          state: "merged",
+          changes_count: "25",
+        }),
+      } as Response);
+
+      const result = await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.deepStrictEqual(result.data, { changesCount: "25" });
+    });
+
+    test("handles 1000+ changes count", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({
+          iid: 42,
+          changes_count: "1000+",
+        }),
+      } as Response);
+
+      const result = await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+      );
+
+      assert.strictEqual(result.success, true);
+      assert.deepStrictEqual(result.data, { changesCount: "1000+" });
+    });
+
+    test("handles nested group paths with URL encoding", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({ changes_count: "10" }),
+      } as Response);
+
+      await gitLabProvider.getMergeRequestStats("group/subgroup/project", 42);
+
+      const calledUrl = fetchStub.firstCall.args[0] as string;
+      assert.ok(
+        calledUrl.includes("group%2Fsubgroup%2Fproject"),
+        "Path should be URL encoded",
+      );
+    });
+
+    test("returns error on 404 (MR not found)", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.resolves({
+        ok: false,
+        status: 404,
+      } as Response);
+
+      const result = await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.ok(result.error);
+    });
+
+    test("returns error on 401 (invalid token)", async () => {
+      gitLabProvider.setToken("invalid-token");
+      fetchStub.resolves({
+        ok: false,
+        status: 401,
+      } as Response);
+
+      const result = await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.error?.type, VcsErrorType.InvalidToken);
+    });
+
+    test("returns error on network failure", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.rejects(new Error("Network error"));
+
+      const result = await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+      );
+
+      assert.strictEqual(result.success, false);
+      assert.strictEqual(result.error?.type, VcsErrorType.NetworkError);
+    });
+
+    test("uses custom host URL when provided", async () => {
+      gitLabProvider.setToken("test-token");
+      fetchStub.resolves({
+        ok: true,
+        json: async () => ({ changes_count: "5" }),
+      } as Response);
+
+      await gitLabProvider.getMergeRequestStats(
+        "group/project",
+        42,
+        "https://gitlab.example.com",
+      );
+
+      const calledUrl = fetchStub.firstCall.args[0] as string;
+      assert.ok(
+        calledUrl.startsWith("https://gitlab.example.com"),
+        "Should use custom host URL",
+      );
+    });
+  });
 });

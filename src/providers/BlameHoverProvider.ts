@@ -3,7 +3,13 @@ import { VcsProviderId } from "@constants";
 import { ICacheService } from "@interfaces/ICacheService";
 import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
-import { BlameInfo, MergeRequest, VcsError } from "@interfaces/types";
+import {
+  BlameInfo,
+  MergeRequest,
+  RemoteInfo,
+  VcsError,
+} from "@interfaces/types";
+import { logger } from "@services/ErrorLogger";
 import { GitService } from "@services/GitService";
 import { VcsProviderFactory } from "@services/VcsProviderFactory";
 
@@ -16,8 +22,11 @@ export type VcsErrorHandler = (error: VcsError, provider: IVcsProvider) => void;
  * Provides hover information for git blame with MR/PR links
  * Works with any VCS provider (GitLab, GitHub, etc.) via VcsProviderFactory
  */
-export class BlameHoverProvider implements vscode.HoverProvider {
+export class BlameHoverProvider
+  implements vscode.HoverProvider, vscode.Disposable
+{
   private pendingRequests = new Map<string, Promise<MergeRequest | null>>();
+  private pendingStatsRequests = new Set<string>();
 
   constructor(
     private gitService: GitService,
@@ -71,6 +80,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
+    md.supportThemeIcons = true;
 
     const mrResult = await this.getMergeRequestInfo(uri, blameInfo.sha, token);
 
@@ -83,7 +93,7 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     const content = this.hoverContentService.formatRichHoverContent(
       mrResult.mr,
       provider?.id as VcsProviderId | undefined,
-      { loading: mrResult.loading },
+      { loading: mrResult.loading, statsLoading: mrResult.statsLoading },
     );
 
     if (!content) {
@@ -101,35 +111,52 @@ export class BlameHoverProvider implements vscode.HoverProvider {
     uri: vscode.Uri,
     sha: string,
     token: vscode.CancellationToken,
-  ): Promise<{ mr: MergeRequest | null; loading: boolean; checked: boolean }> {
+  ): Promise<{
+    mr: MergeRequest | null;
+    loading: boolean;
+    checked: boolean;
+    statsLoading: boolean;
+  }> {
     const remoteUrl = this.gitService.getRemoteUrl(uri);
     if (!remoteUrl) {
-      return { mr: null, loading: false, checked: false };
+      return { mr: null, loading: false, checked: false, statsLoading: false };
     }
 
     const provider = this.vcsProviderFactory.detectProvider(remoteUrl);
     if (!provider) {
-      return { mr: null, loading: false, checked: false };
+      return { mr: null, loading: false, checked: false, statsLoading: false };
     }
 
     const cached = this.cacheService.get(provider.id, sha);
     if (cached !== undefined) {
       // Cache hit (could be MR or null for "no MR")
-      return { mr: cached, loading: false, checked: true };
+      if (cached && !cached.stats) {
+        const remoteInfo = provider.parseRemoteUrl(remoteUrl);
+        if (remoteInfo) {
+          this.triggerStatsFetch(provider, remoteInfo, cached, sha);
+          return {
+            mr: cached,
+            loading: false,
+            checked: true,
+            statsLoading: true,
+          };
+        }
+      }
+      return { mr: cached, loading: false, checked: true, statsLoading: false };
     }
 
     const pendingKey = `${provider.id}:${sha}`;
     if (this.pendingRequests.has(pendingKey)) {
-      return { mr: null, loading: true, checked: false };
+      return { mr: null, loading: true, checked: false, statsLoading: false };
     }
 
     if (!provider.hasToken()) {
-      return { mr: null, loading: false, checked: false };
+      return { mr: null, loading: false, checked: false, statsLoading: false };
     }
 
     const remoteInfo = provider.parseRemoteUrl(remoteUrl);
     if (!remoteInfo) {
-      return { mr: null, loading: false, checked: false };
+      return { mr: null, loading: false, checked: false, statsLoading: false };
     }
 
     const requestPromise = this.fetchAndCacheMR(
@@ -149,13 +176,66 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       ]);
 
       if (token.isCancellationRequested) {
-        return { mr: null, loading: false, checked: false };
+        return {
+          mr: null,
+          loading: false,
+          checked: false,
+          statsLoading: false,
+        };
       }
 
-      return { mr, loading: false, checked: true };
+      // Trigger stats fetch for newly fetched MR
+      if (mr && !mr.stats) {
+        this.triggerStatsFetch(provider, remoteInfo, mr, sha);
+        return { mr, loading: false, checked: true, statsLoading: true };
+      }
+
+      return { mr, loading: false, checked: true, statsLoading: false };
     } finally {
       this.pendingRequests.delete(pendingKey);
     }
+  }
+
+  /**
+   * Trigger background stats fetch (fire-and-forget)
+   */
+  private triggerStatsFetch(
+    provider: IVcsProvider,
+    remoteInfo: RemoteInfo,
+    mr: MergeRequest,
+    sha: string,
+  ): void {
+    const statsKey = `${provider.id}:stats:${sha}`;
+
+    if (this.pendingStatsRequests.has(statsKey)) {
+      return;
+    }
+
+    this.pendingStatsRequests.add(statsKey);
+
+    provider
+      .getMergeRequestStats(remoteInfo.projectPath, mr.iid, remoteInfo.host)
+      .then((result) => {
+        if (result.success && result.data) {
+          this.cacheService.updateStats(provider.id, sha, result.data);
+        }
+      })
+      .catch((error: unknown) => {
+        logger.info(
+          `Stats fetch skipped for ${sha}: ${error instanceof Error ? error.message : "unknown"}`,
+        );
+      })
+      .finally(() => {
+        this.pendingStatsRequests.delete(statsKey);
+      });
+  }
+
+  /**
+   * Dispose of resources and clear pending requests
+   */
+  dispose(): void {
+    this.pendingRequests.clear();
+    this.pendingStatsRequests.clear();
   }
 
   /**

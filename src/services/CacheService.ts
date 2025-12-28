@@ -1,7 +1,12 @@
 import * as vscode from "vscode";
 import { CONFIG_KEYS, DEFAULTS, TIME_CONSTANTS } from "@constants";
 import { ICacheService } from "@interfaces/ICacheService";
-import { MergeRequest, GitAPI, Repository } from "@interfaces/types";
+import {
+  MergeRequest,
+  MergeRequestStats,
+  GitAPI,
+  Repository,
+} from "@interfaces/types";
 
 interface CacheEntry {
   value: MergeRequest | null;
@@ -132,6 +137,38 @@ export class CacheService implements ICacheService {
    */
   has(providerId: string, sha: string): boolean {
     return this.get(providerId, sha) !== undefined;
+  }
+
+  /**
+   * Update an existing cached MR with stats data
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
+   * @param sha The commit SHA
+   * @param stats The stats to add to the cached MR
+   * @returns true if cache was updated, false if entry not found or expired
+   */
+  updateStats(
+    providerId: string,
+    sha: string,
+    stats: MergeRequestStats,
+  ): boolean {
+    const key = this.getCacheKey(providerId, sha);
+    const entry = this.cache.get(key);
+
+    if (!entry) {
+      return false;
+    }
+
+    if (Date.now() > entry.expiresAt) {
+      this.cache.delete(key);
+      return false;
+    }
+
+    if (!entry.value) {
+      return false;
+    }
+
+    entry.value.stats = { ...stats };
+    return true;
   }
 
   /**

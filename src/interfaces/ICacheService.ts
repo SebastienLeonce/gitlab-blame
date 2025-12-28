@@ -1,4 +1,4 @@
-import { MergeRequest, GitAPI } from "./types";
+import { MergeRequest, MergeRequestStats, GitAPI } from "./types";
 
 /**
  * Interface for cache service implementations
@@ -33,6 +33,19 @@ export interface ICacheService {
    * @returns true if the SHA is cached
    */
   has(providerId: string, sha: string): boolean;
+
+  /**
+   * Update an existing cached MR with stats data
+   * @param providerId The VCS provider ID (e.g., 'gitlab', 'github')
+   * @param sha The commit SHA
+   * @param stats The stats to add to the cached MR
+   * @returns true if cache was updated, false if entry not found or expired
+   */
+  updateStats(
+    providerId: string,
+    sha: string,
+    stats: MergeRequestStats,
+  ): boolean;
 
   /**
    * Clear all cached entries

@@ -1,4 +1,9 @@
-import { MergeRequest, VcsResult, RemoteInfo } from "./types";
+import {
+  MergeRequest,
+  MergeRequestStats,
+  VcsResult,
+  RemoteInfo,
+} from "./types";
 
 /**
  * Interface for VCS provider implementations (GitLab, GitHub, Bitbucket)
@@ -64,6 +69,19 @@ export interface IVcsProvider {
     commitSha: string,
     hostUrl?: string,
   ): Promise<VcsResult<MergeRequest | null>>;
+
+  /**
+   * Fetch detailed MR/PR statistics (additions, deletions, changed files)
+   * @param projectPath The project path (e.g., "group/project")
+   * @param mrIid The MR/PR number (iid for GitLab, number for GitHub)
+   * @param hostUrl Optional host URL override
+   * @returns VcsResult with MergeRequestStats or error
+   */
+  getMergeRequestStats(
+    projectPath: string,
+    mrIid: number,
+    hostUrl?: string,
+  ): Promise<VcsResult<MergeRequestStats | null>>;
 
   /**
    * Reset any error state flags (e.g., for retry logic)

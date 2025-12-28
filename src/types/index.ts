@@ -3,6 +3,7 @@
  */
 export {
   MergeRequest,
+  MergeRequestStats,
   BlameInfo,
   GitLabMR,
   RemoteInfo,

@@ -30,6 +30,11 @@ interface IVcsProvider {
     commitSha: string,
     hostUrl?: string,
   ): Promise<VcsResult<MergeRequest | null>>;
+  getMergeRequestStats(
+    projectPath: string,
+    mrIid: number,
+    hostUrl?: string,
+  ): Promise<VcsResult<MergeRequestStats | null>>;
   resetErrorState(): void;
 }
 ```
@@ -77,6 +82,32 @@ Check if a remote URL belongs to this provider.
 Get the MR/PR associated with a commit.
 
 **Returns**: `VcsResult` with MR data or error information.
+
+#### `getMergeRequestStats(projectPath, mrIid, hostUrl?): Promise<VcsResult<MergeRequestStats | null>>`
+
+Get stats (additions, deletions, file count) for an MR/PR.
+
+**Parameters**:
+- `projectPath`: Project path (e.g., "owner/repo")
+- `mrIid`: MR/PR number (iid)
+- `hostUrl`: Optional host URL override for self-hosted instances
+
+**Returns**: `VcsResult` with stats data or error information.
+
+**Provider implementations**:
+- **GitLab**: Fetches from `/api/v4/projects/{id}/merge_requests/{iid}`, returns `{ changesCount: string }`
+- **GitHub**: Fetches from `/repos/{owner}/{repo}/pulls/{number}`, returns `{ additions, deletions, changedFiles }`
+
+**Example**:
+```typescript
+const result = await provider.getMergeRequestStats("owner/repo", 42);
+if (result.success && result.data) {
+  // GitHub stats
+  console.log(`+${result.data.additions} -${result.data.deletions}`);
+  // GitLab stats
+  console.log(`${result.data.changesCount} changes`);
+}
+```
 
 #### `resetErrorState(): void`
 
@@ -304,6 +335,7 @@ interface ICacheService {
   get(providerId: string, sha: string): MergeRequest | null | undefined;
   set(providerId: string, sha: string, mr: MergeRequest | null): void;
   has(providerId: string, sha: string): boolean;
+  updateStats(providerId: string, sha: string, stats: MergeRequestStats): boolean;
   clear(): void;
   readonly size: number;
   dispose(): void;
@@ -376,26 +408,31 @@ Constructs the hover tooltip content.
 ```
 **Merge Request**: [!123 MR Title](https://gitlab.com/...)
 
-`abc1234` by Author Name • 2 days ago
++100 -50 · 5 files
+```
 
-*Commit message summary*
+Or for GitLab (different stats format):
+```
+**Merge Request**: [!123 MR Title](https://gitlab.com/...)
+
+42 changes
+```
+
+Stats loading state:
+```
+**Merge Request**: [!123 MR Title](https://gitlab.com/...)
+
+*Loading stats...*
 ```
 
 Long MR titles are truncated (hover to see full title):
 ```
 **Merge Request**: [!456 Implement very long feature na...](https://... "Full title here")
 
-`abc1234` by Author Name • 2 days ago
++100 -50 · 5 files
 ```
 
-If no MR found:
-```
-`abc1234` by Author Name • 2 days ago
-
-*Commit message summary*
-
-*No associated merge request*
-```
+If no MR found, hover is suppressed (returns `null`).
 
 #### `getMergeRequestInfo(uri, sha, token): Promise<MRResult>`
 
@@ -406,7 +443,8 @@ Fetches MR info from cache or API using provider auto-detection.
 {
   mr: MergeRequest | null,  // The MR if found
   loading: boolean,          // True if request in progress
-  checked: boolean           // True if we actually checked
+  checked: boolean,          // True if we actually checked
+  statsLoading: boolean      // True if stats fetch is in progress
 }
 ```
 
@@ -420,6 +458,18 @@ Fetches MR info from cache or API using provider auto-detection.
 7. Call provider API
 8. Handle errors via callback
 9. Cache result
+10. **Trigger background stats fetch if MR found but no stats**
+
+#### `triggerStatsFetch(provider, remoteInfo, mr, sha): void`
+
+Triggers a background stats fetch (fire-and-forget pattern).
+
+**Behavior**:
+- Deduplicates concurrent requests using `pendingStatsRequests` Set
+- Calls `provider.getMergeRequestStats()` in background
+- On success: updates cache via `cacheService.updateStats()`
+- On failure: silently ignored (stats are optional)
+- Next hover will display stats from updated cache
 
 #### `fetchAndCacheMR(provider, projectPath, sha, host): Promise<MergeRequest | null>`
 

@@ -3,7 +3,7 @@ import {
   IHoverContentService,
   RichHoverContentOptions,
 } from "@interfaces/IHoverContentService";
-import { MergeRequest } from "@interfaces/types";
+import { MergeRequest, MergeRequestStats } from "@interfaces/types";
 
 /**
  * Service for formatting hover content (MR links)
@@ -61,7 +61,29 @@ export class HoverContentService implements IHoverContentService {
   }
 
   /**
-   * Format hover content with MR link only
+   * Format stats line based on provider data using ThemeIcons
+   * GitHub: "$(diff-added) 100  $(diff-removed) 50  $(file) 5"
+   * GitLab: "$(diff) 42 changes"
+   */
+  private formatStatsLine(stats: MergeRequestStats): string {
+    if (stats.additions !== undefined && stats.deletions !== undefined) {
+      let line = `$(diff-added) ${stats.additions}  $(diff-removed) ${stats.deletions}`;
+      if (stats.changedFiles !== undefined) {
+        line += `  $(file) ${stats.changedFiles}`;
+      }
+      return line;
+    }
+
+    if (stats.changesCount !== undefined) {
+      const changeLabel = stats.changesCount === "1" ? "change" : "changes";
+      return `$(diff) ${stats.changesCount} ${changeLabel}`;
+    }
+
+    return "";
+  }
+
+  /**
+   * Format hover content with MR link and optional stats
    * Returns empty string if no MR and not loading (caller should suppress hover)
    */
   formatRichHoverContent(
@@ -69,11 +91,22 @@ export class HoverContentService implements IHoverContentService {
     providerId: VcsProviderId | undefined,
     options: RichHoverContentOptions = {},
   ): string {
-    const { loading = false } = options;
+    const { loading = false, statsLoading = false } = options;
 
     if (mr && providerId) {
       const mrLink = this.formatRichMrLink(mr, providerId);
-      return `**Merge Request**: ${mrLink}`;
+      let content = `**Merge Request**: ${mrLink}`;
+
+      if (mr.stats) {
+        const statsLine = this.formatStatsLine(mr.stats);
+        if (statsLine) {
+          content += `\n\n${statsLine}`;
+        }
+      } else if (statsLoading) {
+        content += `\n\n*Loading stats...*`;
+      }
+
+      return content;
     }
 
     if (loading) {

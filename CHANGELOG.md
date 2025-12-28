@@ -8,8 +8,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **MR/PR Change Statistics** - Hover now displays additions, deletions, and file counts with ThemeIcons
+  - GitHub format: `$(diff-added) 100  $(diff-removed) 50  $(file) 5` (colored icons)
+  - GitLab format: `$(diff) 42 changes` (diff icon)
+  - Icons respect user's color theme (light/dark compatible)
+  - Lazy loading for performance - stats fetched in background after first hover
+  - Stats appear on second hover once cached
+- **MergeRequestStats Interface** - New type for provider-agnostic stats handling
+- **ICacheService.updateStats()** - Method for in-place cache updates with stats
+- **IVcsProvider.getMergeRequestStats()** - Method for fetching stats from VCS APIs
 
 ### Changed
+- **BlameHoverProvider** - Added background stats fetching with fire-and-forget pattern
+- **HoverContentService** - Added `formatStatsLine()` and `statsLoading` option
+- **GitLabProvider** - Implemented `getMergeRequestStats()` via single MR endpoint
+- **GitHubProvider** - Implemented `getMergeRequestStats()` and stats extraction from PR response
 
 ### Fixed
 
