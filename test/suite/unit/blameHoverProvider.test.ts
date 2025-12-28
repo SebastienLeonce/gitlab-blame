@@ -558,12 +558,9 @@ suite("BlameHoverProvider", () => {
       assert.ok(markdown.value.includes("**Merge Request**"));
       assert.ok(markdown.value.includes("!42"));
       assert.ok(markdown.value.includes("Test MR"));
-      assert.ok(markdown.value.includes("abc123d")); // Short SHA
-      assert.ok(markdown.value.includes("John Doe"));
-      assert.ok(markdown.value.includes("Fix bug in authentication"));
     });
 
-    test("returns hover without MR link when commit has no MR", async () => {
+    test("returns null when commit has no MR (hover suppressed)", async () => {
       mockGitService.getBlameForLine.resolves(testBlameInfo);
       mockGitService.getRemoteUrl.returns("git@gitlab.com:group/project.git");
       mockCacheService.get.returns(null); // Cached as "no MR"
@@ -575,12 +572,7 @@ suite("BlameHoverProvider", () => {
         token,
       );
 
-      assert.ok(result);
-      const markdown = result.contents[0] as vscode.MarkdownString;
-      assert.ok(!markdown.value.includes("**Merge Request**"));
-      assert.ok(markdown.value.includes("*No associated merge request*"));
-      assert.ok(markdown.value.includes("abc123d"));
-      assert.ok(markdown.value.includes("John Doe"));
+      assert.strictEqual(result, null);
     });
 
     test("returns null when no blame info available", async () => {
@@ -670,7 +662,6 @@ suite("BlameHoverProvider", () => {
       const markdown = result.contents[0] as vscode.MarkdownString;
       assert.ok(markdown.value.includes("!123"));
       // Should include ellipsis in the display text (escaped as \\.\\.\\.)
-      // The title is truncated in the link display, not the tooltip
       assert.ok(
         markdown.value.includes("\\.\\.\\.") || markdown.value.includes("..."),
       );
@@ -680,31 +671,6 @@ suite("BlameHoverProvider", () => {
           "https://gitlab.com/group/project/-/merge_requests/123",
         ),
       );
-    });
-
-    test("escapes markdown in author name via provideHover", async () => {
-      const blameWithMarkdown = {
-        ...testBlameInfo,
-        author: "**Evil Author**", // Contains markdown
-        summary: "_Sneaky_ commit [link](url)",
-      };
-
-      mockGitService.getBlameForLine.resolves(blameWithMarkdown);
-      mockCacheService.get.returns(null);
-      const token = createMockCancellationToken();
-
-      const result = await blameHoverProvider.provideHover(
-        { uri: testUri } as vscode.TextDocument,
-        testPosition,
-        token,
-      );
-
-      assert.ok(result);
-      const markdown = result.contents[0] as vscode.MarkdownString;
-      // Markdown should be escaped
-      assert.ok(markdown.value.includes("\\*\\*Evil Author\\*\\*"));
-      assert.ok(markdown.value.includes("\\_Sneaky\\_"));
-      assert.ok(markdown.value.includes("\\[link\\]"));
     });
 
     test("handles VCS error by calling error callback", async () => {

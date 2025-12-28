@@ -1,14 +1,12 @@
 import { VcsProviderId } from "@constants";
-import { MergeRequest, BlameInfo } from "./types";
+import { MergeRequest } from "./types";
 
 /**
- * Options for rich hover content formatting
+ * Options for hover content formatting
  */
 export interface RichHoverContentOptions {
   /** Whether MR data is still loading */
   loading?: boolean;
-  /** Whether MR lookup was completed (to show "No MR" message) */
-  checked?: boolean;
 }
 
 /**
@@ -17,16 +15,15 @@ export interface RichHoverContentOptions {
  */
 export interface IHoverContentService {
   /**
-   * Format rich hover content with MR link, SHA, author, date, and commit summary
+   * Format hover content with MR link only
+   * Returns empty string if no MR and not loading (caller should suppress hover)
    * @param mr The merge request data (or null if no MR)
-   * @param blameInfo Git blame information
    * @param providerId Provider ID for MR link prefix
-   * @param options Optional loading/checked state
-   * @returns Formatted markdown string
+   * @param options Optional loading state
+   * @returns Formatted markdown string, or empty string if no content
    */
   formatRichHoverContent(
     mr: MergeRequest | null,
-    blameInfo: BlameInfo,
     providerId: VcsProviderId | undefined,
     options?: RichHoverContentOptions,
   ): string;
@@ -37,13 +34,6 @@ export interface IHoverContentService {
    * @returns Escaped text safe for markdown
    */
   escapeMarkdown(text: string): string;
-
-  /**
-   * Format a date as relative time (e.g., "2 days ago")
-   * @param date Date to format
-   * @returns Human-readable relative time string
-   */
-  formatRelativeDate(date: Date): string;
 
   /**
    * Get the MR/PR prefix for a provider

@@ -1,21 +1,13 @@
 import * as assert from "assert";
-import * as sinon from "sinon";
 import { HoverContentService } from "@services/HoverContentService";
 import { VCS_PROVIDERS } from "@constants";
-import { MergeRequest, BlameInfo } from "@types";
+import { MergeRequest } from "@types";
 
 suite("HoverContentService", () => {
   let hoverContentService: HoverContentService;
-  let clock: sinon.SinonFakeTimers;
 
   setup(() => {
     hoverContentService = new HoverContentService();
-  });
-
-  teardown(() => {
-    if (clock) {
-      clock.restore();
-    }
   });
 
   suite("getMrPrefix", () => {
@@ -176,297 +168,7 @@ suite("HoverContentService", () => {
     });
   });
 
-  suite("formatRelativeDate", () => {
-    setup(() => {
-      // Fix time to a known point: 2024-01-15 12:00:00 UTC
-      clock = sinon.useFakeTimers(new Date("2024-01-15T12:00:00Z").getTime());
-    });
-
-    teardown(() => {
-      clock.restore();
-    });
-
-    test("returns 'just now' for current time", () => {
-      const now = new Date();
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(now),
-        "just now",
-      );
-    });
-
-    test("returns 'just now' for 30 seconds ago", () => {
-      const date = new Date(Date.now() - 30 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "just now",
-      );
-    });
-
-    test("returns 'just now' for 59 seconds ago", () => {
-      const date = new Date(Date.now() - 59 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "just now",
-      );
-    });
-
-    test("returns '1 minute ago' for 60 seconds ago", () => {
-      const date = new Date(Date.now() - 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 minute ago",
-      );
-    });
-
-    test("returns '1 minute ago' for 90 seconds ago", () => {
-      const date = new Date(Date.now() - 90 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 minute ago",
-      );
-    });
-
-    test("returns '2 minutes ago' for 2 minutes", () => {
-      const date = new Date(Date.now() - 2 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 minutes ago",
-      );
-    });
-
-    test("returns '59 minutes ago' for 59 minutes", () => {
-      const date = new Date(Date.now() - 59 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "59 minutes ago",
-      );
-    });
-
-    test("returns '1 hour ago' for 60 minutes", () => {
-      const date = new Date(Date.now() - 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 hour ago",
-      );
-    });
-
-    test("returns '1 hour ago' for 90 minutes", () => {
-      const date = new Date(Date.now() - 90 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 hour ago",
-      );
-    });
-
-    test("returns '2 hours ago' for 2 hours", () => {
-      const date = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 hours ago",
-      );
-    });
-
-    test("returns '23 hours ago' for 23 hours", () => {
-      const date = new Date(Date.now() - 23 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "23 hours ago",
-      );
-    });
-
-    test("returns '1 day ago' for 24 hours", () => {
-      const date = new Date(Date.now() - 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 day ago",
-      );
-    });
-
-    test("returns '1 day ago' for 36 hours", () => {
-      const date = new Date(Date.now() - 36 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 day ago",
-      );
-    });
-
-    test("returns '2 days ago' for 48 hours", () => {
-      const date = new Date(Date.now() - 48 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 days ago",
-      );
-    });
-
-    test("returns '6 days ago' for 6 days", () => {
-      const date = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "6 days ago",
-      );
-    });
-
-    test("returns '1 week ago' for 7 days", () => {
-      const date = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 week ago",
-      );
-    });
-
-    test("returns '2 weeks ago' for 14 days", () => {
-      const date = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 weeks ago",
-      );
-    });
-
-    test("returns '3 weeks ago' for 21 days", () => {
-      const date = new Date(Date.now() - 21 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "3 weeks ago",
-      );
-    });
-
-    test("returns '1 month ago' for 30 days", () => {
-      const date = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 month ago",
-      );
-    });
-
-    test("returns '2 months ago' for 60 days", () => {
-      const date = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 months ago",
-      );
-    });
-
-    test("returns '11 months ago' for 330 days", () => {
-      const date = new Date(Date.now() - 330 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "11 months ago",
-      );
-    });
-
-    test("returns '1 year ago' for 365 days", () => {
-      const date = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "1 year ago",
-      );
-    });
-
-    test("returns '2 years ago' for 730 days", () => {
-      const date = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "2 years ago",
-      );
-    });
-
-    test("returns '5 years ago' for 5 years", () => {
-      const date = new Date(Date.now() - 5 * 365 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(date),
-        "5 years ago",
-      );
-    });
-
-    test("handles singular vs plural for minutes", () => {
-      const oneMin = new Date(Date.now() - 1 * 60 * 1000);
-      const twoMin = new Date(Date.now() - 2 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneMin),
-        "1 minute ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoMin),
-        "2 minutes ago",
-      );
-    });
-
-    test("handles singular vs plural for hours", () => {
-      const oneHour = new Date(Date.now() - 1 * 60 * 60 * 1000);
-      const twoHours = new Date(Date.now() - 2 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneHour),
-        "1 hour ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoHours),
-        "2 hours ago",
-      );
-    });
-
-    test("handles singular vs plural for days", () => {
-      const oneDay = new Date(Date.now() - 1 * 24 * 60 * 60 * 1000);
-      const twoDays = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneDay),
-        "1 day ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoDays),
-        "2 days ago",
-      );
-    });
-
-    test("handles singular vs plural for weeks", () => {
-      const oneWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const twoWeeks = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneWeek),
-        "1 week ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoWeeks),
-        "2 weeks ago",
-      );
-    });
-
-    test("handles singular vs plural for months", () => {
-      const oneMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const twoMonths = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneMonth),
-        "1 month ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoMonths),
-        "2 months ago",
-      );
-    });
-
-    test("handles singular vs plural for years", () => {
-      const oneYear = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000);
-      const twoYears = new Date(Date.now() - 730 * 24 * 60 * 60 * 1000);
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(oneYear),
-        "1 year ago",
-      );
-      assert.strictEqual(
-        hoverContentService.formatRelativeDate(twoYears),
-        "2 years ago",
-      );
-    });
-  });
-
   suite("formatRichHoverContent", () => {
-    const sampleBlameInfo: BlameInfo = {
-      sha: "abc123def456",
-      author: "John Doe",
-      authorEmail: "john@example.com",
-      date: new Date("2024-01-15T12:00:00Z"),
-      summary: "Fix authentication bug",
-      line: 10,
-    };
-
     const sampleMR: MergeRequest = {
       iid: 42,
       title: "Test MR",
@@ -475,120 +177,33 @@ suite("HoverContentService", () => {
       state: "merged",
     };
 
-    setup(() => {
-      clock = sinon.useFakeTimers(new Date("2024-01-15T12:00:00Z").getTime());
-    });
-
-    teardown(() => {
-      clock.restore();
-    });
-
-    test("includes MR link when MR provided", () => {
+    test("returns MR link when MR provided", () => {
       const result = hoverContentService.formatRichHoverContent(
         sampleMR,
-        sampleBlameInfo,
         VCS_PROVIDERS.GITLAB,
       );
       assert.ok(result.includes("**Merge Request**"));
       assert.ok(result.includes("!42"));
     });
 
-    test("shows loading state when loading is true", () => {
+    test("returns loading message when loading is true", () => {
       const result = hoverContentService.formatRichHoverContent(
         null,
-        sampleBlameInfo,
         VCS_PROVIDERS.GITLAB,
         { loading: true },
       );
-      assert.ok(result.includes("*Loading merge request...*"));
+      assert.strictEqual(result, "*Loading merge request...*");
     });
 
-    test("shows no MR message when checked and no MR", () => {
+    test("returns empty string when no MR and not loading", () => {
       const result = hoverContentService.formatRichHoverContent(
         null,
-        sampleBlameInfo,
-        VCS_PROVIDERS.GITLAB,
-        { checked: true },
-      );
-      assert.ok(result.includes("*No associated merge request*"));
-    });
-
-    test("includes short SHA", () => {
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        sampleBlameInfo,
         VCS_PROVIDERS.GITLAB,
       );
-      assert.ok(result.includes("`abc123d`"));
+      assert.strictEqual(result, "");
     });
 
-    test("includes author name", () => {
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        sampleBlameInfo,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("John Doe"));
-    });
-
-    test("includes relative date", () => {
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        sampleBlameInfo,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("just now"));
-    });
-
-    test("includes commit summary", () => {
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        sampleBlameInfo,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("*Fix authentication bug*"));
-    });
-
-    test("escapes markdown in author name", () => {
-      const blameWithMarkdown: BlameInfo = {
-        ...sampleBlameInfo,
-        author: "**Evil Author**",
-      };
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        blameWithMarkdown,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("\\*\\*Evil Author\\*\\*"));
-    });
-
-    test("escapes markdown in commit summary", () => {
-      const blameWithMarkdown: BlameInfo = {
-        ...sampleBlameInfo,
-        summary: "_Sneaky_ commit",
-      };
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        blameWithMarkdown,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("\\_Sneaky\\_"));
-    });
-
-    test("handles blame without summary", () => {
-      const blameNoSummary: BlameInfo = {
-        ...sampleBlameInfo,
-        summary: "",
-      };
-      const result = hoverContentService.formatRichHoverContent(
-        sampleMR,
-        blameNoSummary,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(!result.includes("*$")); // No empty italic block
-    });
-
-    test("truncates long MR titles in rich content", () => {
+    test("truncates long MR titles", () => {
       const longTitleMR: MergeRequest = {
         iid: 123,
         title:
@@ -599,37 +214,29 @@ suite("HoverContentService", () => {
       };
       const result = hoverContentService.formatRichHoverContent(
         longTitleMR,
-        sampleBlameInfo,
         VCS_PROVIDERS.GITLAB,
       );
-      // Should contain truncation indicator
       assert.ok(
         result.includes("\\.\\.\\.") || result.includes("..."),
         "Should truncate long title",
       );
     });
 
-    test("uses correct prefix for GitHub", () => {
+    test("uses # prefix for GitHub", () => {
       const result = hoverContentService.formatRichHoverContent(
         sampleMR,
-        sampleBlameInfo,
         VCS_PROVIDERS.GITHUB,
       );
       assert.ok(result.includes("#42"));
       assert.ok(!result.includes("!42"));
     });
 
-    test("handles undefined providerId gracefully", () => {
+    test("returns empty string when MR provided but providerId is undefined", () => {
       const result = hoverContentService.formatRichHoverContent(
         sampleMR,
-        sampleBlameInfo,
         undefined,
       );
-      // Should still include commit info without MR link
-      assert.ok(result.includes("`abc123d`"));
-      assert.ok(result.includes("John Doe"));
-      // Should not include MR section when providerId is undefined
-      assert.ok(!result.includes("**Merge Request**"));
+      assert.strictEqual(result, "");
     });
   });
 });

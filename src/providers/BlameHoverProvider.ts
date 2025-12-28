@@ -52,17 +52,22 @@ export class BlameHoverProvider implements vscode.HoverProvider {
       token,
     );
 
+    if (!content) {
+      return null;
+    }
+
     return new vscode.Hover(content);
   }
 
   /**
-   * Build the hover content with commit info and MR link
+   * Build the hover content with MR link only
+   * Returns null if no MR found and not loading (suppress hover)
    */
   private async buildHoverContent(
     uri: vscode.Uri,
     blameInfo: BlameInfo,
     token: vscode.CancellationToken,
-  ): Promise<vscode.MarkdownString> {
+  ): Promise<vscode.MarkdownString | null> {
     const md = new vscode.MarkdownString();
     md.isTrusted = true;
     md.supportHtml = true;
@@ -77,10 +82,13 @@ export class BlameHoverProvider implements vscode.HoverProvider {
 
     const content = this.hoverContentService.formatRichHoverContent(
       mrResult.mr,
-      blameInfo,
       provider?.id as VcsProviderId | undefined,
-      { loading: mrResult.loading, checked: mrResult.checked },
+      { loading: mrResult.loading },
     );
+
+    if (!content) {
+      return null;
+    }
 
     md.appendMarkdown(content);
     return md;

@@ -192,7 +192,7 @@ suite("BlameDecorationProvider", () => {
       assert.strictEqual(decoration.renderOptions?.after?.contentText, "#456");
     });
 
-    test("includes hover message with rich content in inline mode", () => {
+    test("includes hover message with MR link in inline mode", () => {
       const mockMR: MergeRequest = {
         iid: 123,
         title: "Fix login bug",
@@ -210,7 +210,8 @@ suite("BlameDecorationProvider", () => {
 
       assert.ok(decoration.hoverMessage);
       const hoverMarkdown = decoration.hoverMessage as vscode.MarkdownString;
-      // Rich hover content includes MR link, SHA, author, and summary
+      // Hover content includes only MR link
+      assert.ok(hoverMarkdown.value.includes("**Merge Request**"));
       assert.ok(hoverMarkdown.value.includes("!123"));
       assert.ok(hoverMarkdown.value.includes("Fix login bug"));
       assert.ok(
@@ -218,8 +219,6 @@ suite("BlameDecorationProvider", () => {
           "https://gitlab.com/project/merge_requests/123",
         ),
       );
-      assert.ok(hoverMarkdown.value.includes("abc1234")); // Short SHA
-      assert.ok(hoverMarkdown.value.includes("John Doe")); // Author
     });
   });
 

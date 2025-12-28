@@ -415,7 +415,7 @@ Clean up watchers and clear cache.
 
 **Location**: `src/services/HoverContentService.ts`
 
-Stateless service for formatting hover content (MR links, blame info, relative dates). Used by both `BlameHoverProvider` and `BlameDecorationProvider` to ensure consistent hover content formatting.
+Stateless service for formatting hover content (MR links only). Used by both `BlameHoverProvider` and `BlameDecorationProvider` to ensure consistent hover content formatting.
 
 ### Interface
 
@@ -425,18 +425,15 @@ Stateless service for formatting hover content (MR links, blame info, relative d
 interface IHoverContentService {
   formatRichHoverContent(
     mr: MergeRequest | null,
-    blameInfo: BlameInfo,
     providerId: VcsProviderId | undefined,
     options?: RichHoverContentOptions,
   ): string;
   escapeMarkdown(text: string): string;
-  formatRelativeDate(date: Date): string;
   getMrPrefix(providerId: VcsProviderId): string;
 }
 
 interface RichHoverContentOptions {
   loading?: boolean;  // Whether MR data is still loading
-  checked?: boolean;  // Whether MR lookup was completed
 }
 ```
 
@@ -480,53 +477,31 @@ hoverContentService.escapeMarkdown("Fix *bold* issue");
 // Returns: "Fix \\*bold\\* issue"
 ```
 
-#### `formatRelativeDate(date: Date): string`
+#### `formatRichHoverContent(mr, providerId, options?): string`
 
-Format a date as human-readable relative time.
-
-**Parameters**:
-- `date`: Date to format
-
-**Returns**: Relative time string (e.g., "2 days ago", "just now").
-
-**Example**:
-```typescript
-const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
-hoverContentService.formatRelativeDate(date); // "2 days ago"
-```
-
-#### `formatRichHoverContent(mr, blameInfo, providerId, options?): string`
-
-Format rich hover content with MR link, SHA, author, date, and commit summary.
+Format hover content with MR link only.
 
 **Parameters**:
 - `mr`: Merge request data (or `null` if no MR)
-- `blameInfo`: Git blame information
 - `providerId`: Provider ID for MR link prefix (can be `undefined`)
-- `options`: Optional loading/checked state
+- `options`: Optional loading state
 
-**Returns**: Multi-line markdown string.
+**Returns**: Markdown string, or empty string if no MR and not loading.
 
 **Example**:
 ```typescript
 const content = hoverContentService.formatRichHoverContent(
   mr,
-  blameInfo,
   "gitlab",
-  { loading: false, checked: true }
+  { loading: false }
 );
-// Returns:
-// **Merge Request**: [!42 Test MR](url)
-//
-// `abc123d` by John Doe • 2 days ago
-//
-// *Fix authentication bug*
+// Returns: "**Merge Request**: [!42 Test MR](url)"
 ```
 
 **Output variations**:
-- With MR: Shows MR link, commit info, and summary
-- Loading state: Shows "*Loading merge request...*" instead of MR link
-- No MR (checked): Shows "*No associated merge request*"
+- With MR: Shows `**Merge Request**: [!42 Title](url)`
+- Loading state: Shows `*Loading merge request...*`
+- No MR: Returns empty string (caller should suppress hover)
 
 ### Usage
 
@@ -556,8 +531,10 @@ const decorationProvider = new BlameDecorationProvider(
 
 ### Design Notes
 
+- **Minimal content**: Only shows MR link to coexist with other hover providers
 - **Stateless**: All methods are pure functions - no internal state
 - **Returns strings**: Service returns raw markdown strings; providers create `vscode.MarkdownString` and set `isTrusted`/`supportHtml` as needed
+- **Hover suppression**: Returns empty string when no MR; callers return `null` to suppress hover entirely
 - **Provider-agnostic prefix**: Accepts `VcsProviderId` to determine correct prefix
 - **Single source of truth**: Both providers use same formatting logic
 

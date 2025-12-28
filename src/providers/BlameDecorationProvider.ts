@@ -293,18 +293,17 @@ export class BlameDecorationProvider {
     // Only add hover message when HoverProvider is NOT active
     // In "both" mode, HoverProvider handles tooltips to avoid duplication
     if (this.displayMode !== DISPLAY_MODES.BOTH) {
-      const hoverMarkdown = new vscode.MarkdownString();
-      hoverMarkdown.isTrusted = true;
-      hoverMarkdown.supportHtml = true;
-      hoverMarkdown.appendMarkdown(
-        this.hoverContentService.formatRichHoverContent(
-          mr,
-          blameInfo,
-          providerId,
-          { checked: true },
-        ),
+      const content = this.hoverContentService.formatRichHoverContent(
+        mr,
+        providerId,
       );
-      decoration.hoverMessage = hoverMarkdown;
+      if (content) {
+        const hoverMarkdown = new vscode.MarkdownString();
+        hoverMarkdown.isTrusted = true;
+        hoverMarkdown.supportHtml = true;
+        hoverMarkdown.appendMarkdown(content);
+        decoration.hoverMessage = hoverMarkdown;
+      }
     }
 
     return decoration;
