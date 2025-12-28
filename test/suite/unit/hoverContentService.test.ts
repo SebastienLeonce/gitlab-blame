@@ -457,60 +457,6 @@ suite("HoverContentService", () => {
     });
   });
 
-  suite("formatSimpleMrLink", () => {
-    const sampleMR: MergeRequest = {
-      iid: 42,
-      title: "Fix bug",
-      webUrl: "https://gitlab.com/group/project/-/merge_requests/42",
-      mergedAt: null,
-      state: "merged",
-    };
-
-    test("formats GitLab MR link with ! prefix", () => {
-      const result = hoverContentService.formatSimpleMrLink(
-        sampleMR,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.strictEqual(
-        result,
-        "[!42: Fix bug](https://gitlab.com/group/project/-/merge_requests/42)",
-      );
-    });
-
-    test("formats GitHub PR link with # prefix", () => {
-      const githubPR: MergeRequest = {
-        iid: 123,
-        title: "Add feature",
-        webUrl: "https://github.com/user/repo/pull/123",
-        mergedAt: null,
-        state: "merged",
-      };
-      const result = hoverContentService.formatSimpleMrLink(
-        githubPR,
-        VCS_PROVIDERS.GITHUB,
-      );
-      assert.strictEqual(
-        result,
-        "[#123: Add feature](https://github.com/user/repo/pull/123)",
-      );
-    });
-
-    test("escapes markdown in MR title", () => {
-      const mrWithMarkdown: MergeRequest = {
-        iid: 1,
-        title: "Fix *bold* issue",
-        webUrl: "https://example.com",
-        mergedAt: null,
-        state: "merged",
-      };
-      const result = hoverContentService.formatSimpleMrLink(
-        mrWithMarkdown,
-        VCS_PROVIDERS.GITLAB,
-      );
-      assert.ok(result.includes("\\*bold\\*"));
-    });
-  });
-
   suite("formatRichHoverContent", () => {
     const sampleBlameInfo: BlameInfo = {
       sha: "abc123def456",

@@ -8,7 +8,7 @@ import { HoverContentService } from "@services/HoverContentService";
 import { VcsProviderFactory } from "@services/VcsProviderFactory";
 import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
-import { MergeRequest } from "@types";
+import { BlameInfo, MergeRequest } from "@types";
 
 suite("BlameDecorationProvider", () => {
   let decorationProvider: BlameDecorationProvider;
@@ -118,21 +118,33 @@ suite("BlameDecorationProvider", () => {
   });
 
   suite("createDecoration", () => {
+    // Helper to create mock BlameInfo
+    function createMockBlameInfo(line: number): BlameInfo {
+      return {
+        sha: "abc1234def5678",
+        author: "John Doe",
+        authorEmail: "john@example.com",
+        date: new Date("2024-01-15T10:30:00Z"),
+        summary: "Fix login bug",
+        line,
+      };
+    }
+
     // Access private method for testing
     function createDecoration(
-      lineNum: number,
       mr: MergeRequest,
+      blameInfo: BlameInfo,
       provider: IVcsProvider,
     ): vscode.DecorationOptions {
       return (
         decorationProvider as unknown as {
           createDecoration: (
-            lineNum: number,
             mr: MergeRequest,
+            blameInfo: BlameInfo,
             provider: IVcsProvider,
           ) => vscode.DecorationOptions;
         }
-      ).createDecoration(lineNum, mr, provider);
+      ).createDecoration(mr, blameInfo, provider);
     }
 
     test("creates decoration with correct format for GitLab", () => {
@@ -143,10 +155,11 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
-        1,
         mockMR,
+        blameInfo,
         mockVcsProvider as unknown as IVcsProvider,
       );
 
@@ -168,17 +181,18 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
-        1,
         mockPR,
+        blameInfo,
         githubProvider as unknown as IVcsProvider,
       );
 
       assert.strictEqual(decoration.renderOptions?.after?.contentText, "#456");
     });
 
-    test("includes hover message with clickable link in inline mode", () => {
+    test("includes hover message with rich content in inline mode", () => {
       const mockMR: MergeRequest = {
         iid: 123,
         title: "Fix login bug",
@@ -186,15 +200,17 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
-        1,
         mockMR,
+        blameInfo,
         mockVcsProvider as unknown as IVcsProvider,
       );
 
       assert.ok(decoration.hoverMessage);
       const hoverMarkdown = decoration.hoverMessage as vscode.MarkdownString;
+      // Rich hover content includes MR link, SHA, author, and summary
       assert.ok(hoverMarkdown.value.includes("!123"));
       assert.ok(hoverMarkdown.value.includes("Fix login bug"));
       assert.ok(
@@ -202,6 +218,8 @@ suite("BlameDecorationProvider", () => {
           "https://gitlab.com/project/merge_requests/123",
         ),
       );
+      assert.ok(hoverMarkdown.value.includes("abc1234")); // Short SHA
+      assert.ok(hoverMarkdown.value.includes("John Doe")); // Author
     });
   });
 
@@ -234,22 +252,34 @@ suite("BlameDecorationProvider", () => {
   });
 
   suite("Display Mode Behavior", () => {
+    // Helper to create mock BlameInfo
+    function createMockBlameInfo(line: number): BlameInfo {
+      return {
+        sha: "abc1234def5678",
+        author: "John Doe",
+        authorEmail: "john@example.com",
+        date: new Date("2024-01-15T10:30:00Z"),
+        summary: "Fix login bug",
+        line,
+      };
+    }
+
     // Access private method for testing
     function createDecoration(
       provider: BlameDecorationProvider,
-      lineNum: number,
       mr: MergeRequest,
+      blameInfo: BlameInfo,
       vcsProvider: IVcsProvider,
     ): vscode.DecorationOptions {
       return (
         provider as unknown as {
           createDecoration: (
-            lineNum: number,
             mr: MergeRequest,
+            blameInfo: BlameInfo,
             provider: IVcsProvider,
           ) => vscode.DecorationOptions;
         }
-      ).createDecoration(lineNum, mr, vcsProvider);
+      ).createDecoration(mr, blameInfo, vcsProvider);
     }
 
     test("includes hoverMessage in 'inline' mode", () => {
@@ -269,11 +299,12 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
         inlineProvider,
-        1,
         mockMR,
+        blameInfo,
         mockVcsProvider as unknown as IVcsProvider,
       );
 
@@ -302,11 +333,12 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
         hoverProvider,
-        1,
         mockMR,
+        blameInfo,
         mockVcsProvider as unknown as IVcsProvider,
       );
 
@@ -335,11 +367,12 @@ suite("BlameDecorationProvider", () => {
         mergedAt: "2024-01-01T00:00:00Z",
         state: "merged",
       };
+      const blameInfo = createMockBlameInfo(1);
 
       const decoration = createDecoration(
         bothProvider,
-        1,
         mockMR,
+        blameInfo,
         mockVcsProvider as unknown as IVcsProvider,
       );
 

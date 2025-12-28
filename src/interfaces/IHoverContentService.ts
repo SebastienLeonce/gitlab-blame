@@ -17,15 +17,6 @@ export interface RichHoverContentOptions {
  */
 export interface IHoverContentService {
   /**
-   * Format a simple MR/PR link for inline decoration hover
-   * Returns markdown string: [!123: Title](url) or [#123: Title](url)
-   * @param mr The merge request data
-   * @param providerId Provider ID to determine prefix (! for GitLab, # for GitHub)
-   * @returns Formatted markdown string
-   */
-  formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string;
-
-  /**
    * Format rich hover content with MR link, SHA, author, date, and commit summary
    * @param mr The merge request data (or null if no MR)
    * @param blameInfo Git blame information

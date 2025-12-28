@@ -9,7 +9,7 @@ import {
 import { ICacheService } from "@interfaces/ICacheService";
 import { IHoverContentService } from "@interfaces/IHoverContentService";
 import { IVcsProvider } from "@interfaces/IVcsProvider";
-import { MergeRequest } from "@interfaces/types";
+import { BlameInfo, MergeRequest } from "@interfaces/types";
 import { GitService } from "@services/GitService";
 import { VcsProviderFactory } from "@services/VcsProviderFactory";
 import { VcsErrorHandler } from "./BlameHoverProvider";
@@ -223,11 +223,7 @@ export class BlameDecorationProvider {
     if (cached !== undefined) {
       // Cache hit - instant render
       if (cached) {
-        const decoration = this.createDecoration(
-          blameInfo.line,
-          cached,
-          provider,
-        );
+        const decoration = this.createDecoration(cached, blameInfo, provider);
         editor.setDecorations(this.decorationType, [decoration]);
       }
       // Mark line as processed (cache hit is a successful completion)
@@ -255,7 +251,7 @@ export class BlameDecorationProvider {
     this.cacheService.set(provider.id, blameInfo.sha, mr);
 
     if (mr) {
-      const decoration = this.createDecoration(blameInfo.line, mr, provider);
+      const decoration = this.createDecoration(mr, blameInfo, provider);
       editor.setDecorations(this.decorationType, [decoration]);
     }
 
@@ -268,17 +264,16 @@ export class BlameDecorationProvider {
    * Create decoration for a single line
    */
   private createDecoration(
-    lineNum: number,
     mr: MergeRequest,
+    blameInfo: BlameInfo,
     provider: IVcsProvider,
   ): vscode.DecorationOptions {
-    // Format MR/PR number with provider-specific prefix
     const providerId = provider.id as VcsProviderId;
     const prefix = this.hoverContentService.getMrPrefix(providerId);
     const mrText = `${prefix}${mr.iid}`;
 
     // VS Code uses 0-based line numbers
-    const line = lineNum - BLAME_CONSTANTS.LINE_NUMBER_OFFSET;
+    const line = blameInfo.line - BLAME_CONSTANTS.LINE_NUMBER_OFFSET;
     const range = new vscode.Range(
       line,
       Number.MAX_SAFE_INTEGER, // End of line
@@ -300,8 +295,14 @@ export class BlameDecorationProvider {
     if (this.displayMode !== DISPLAY_MODES.BOTH) {
       const hoverMarkdown = new vscode.MarkdownString();
       hoverMarkdown.isTrusted = true;
+      hoverMarkdown.supportHtml = true;
       hoverMarkdown.appendMarkdown(
-        this.hoverContentService.formatSimpleMrLink(mr, providerId),
+        this.hoverContentService.formatRichHoverContent(
+          mr,
+          blameInfo,
+          providerId,
+          { checked: true },
+        ),
       );
       decoration.hoverMessage = hoverMarkdown;
     }

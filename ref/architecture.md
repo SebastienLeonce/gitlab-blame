@@ -92,7 +92,6 @@ GitLab Blame MR Link is a VS Code extension that adds GitLab Merge Request links
   - `getMrPrefix(providerId)` - Returns `!` for GitLab, `#` for GitHub
   - `escapeMarkdown(text)` - Escapes special markdown characters
   - `formatRelativeDate(date)` - Formats dates as human-readable relative time
-  - `formatSimpleMrLink(mr, providerId)` - Simple link: `[!123: Title](url)`
   - `formatRichHoverContent(mr, blameInfo, providerId, options)` - Full rich content with MR link, SHA, author, date, summary
 - **Design Notes**:
   - Returns raw markdown strings (providers create `vscode.MarkdownString`)

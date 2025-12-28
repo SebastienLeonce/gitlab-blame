@@ -68,16 +68,6 @@ export class HoverContentService implements IHoverContentService {
   }
 
   /**
-   * Format a simple MR/PR link for inline decoration hover
-   * Example: [!123: Fix authentication bug](https://gitlab.com/.../42)
-   */
-  formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string {
-    const prefix = this.getMrPrefix(providerId);
-    const mrText = `${prefix}${mr.iid}`;
-    return `[${mrText}: ${this.escapeMarkdown(mr.title)}](${mr.webUrl})`;
-  }
-
-  /**
    * Format MR link with truncation and tooltip for long titles (rich hover)
    */
   private formatRichMrLink(

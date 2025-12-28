@@ -423,7 +423,6 @@ Stateless service for formatting hover content (MR links, blame info, relative d
 
 ```typescript
 interface IHoverContentService {
-  formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string;
   formatRichHoverContent(
     mr: MergeRequest | null,
     blameInfo: BlameInfo,
@@ -494,23 +493,6 @@ Format a date as human-readable relative time.
 ```typescript
 const date = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000);
 hoverContentService.formatRelativeDate(date); // "2 days ago"
-```
-
-#### `formatSimpleMrLink(mr: MergeRequest, providerId: VcsProviderId): string`
-
-Format a simple MR/PR link for inline decoration hover.
-
-**Parameters**:
-- `mr`: Merge request data
-- `providerId`: Provider ID for prefix
-
-**Returns**: Markdown link string: `[!123: Title](url)` or `[#123: Title](url)`
-
-**Example**:
-```typescript
-const mr = { iid: 42, title: "Fix bug", webUrl: "https://gitlab.com/..." };
-hoverContentService.formatSimpleMrLink(mr, "gitlab");
-// Returns: "[!42: Fix bug](https://gitlab.com/...)"
 ```
 
 #### `formatRichHoverContent(mr, blameInfo, providerId, options?): string`
