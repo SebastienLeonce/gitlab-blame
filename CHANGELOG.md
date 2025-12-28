@@ -8,6 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
+### Changed
+
+### Fixed
+
+### Security
+
+## [1.6.0] - 2025-12-28
+
+### Added
 - **MR/PR Change Statistics** - Hover now displays additions, deletions, and file counts with ThemeIcons
   - GitHub format: `$(diff-added) 100  $(diff-removed) 50  $(file) 5` (colored icons)
   - GitLab format: `$(diff) 42 changes` (diff icon)
@@ -23,10 +33,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **HoverContentService** - Added `formatStatsLine()` and `statsLoading` option
 - **GitLabProvider** - Implemented `getMergeRequestStats()` via single MR endpoint
 - **GitHubProvider** - Implemented `getMergeRequestStats()` and stats extraction from PR response
-
-### Fixed
-
-### Security
 
 ## [1.5.0] - 2025-12-26
 
